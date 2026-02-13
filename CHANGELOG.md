@@ -9,9 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- Support for "Ascent" SRT format from Walksnail Avatar systems.
+- Support for Ascent V16.5.7 SRT format from Caddx Walksnail systems.
 - Parsing of additional SRT fields: Hz, Sp, and Gp.
 - Improved SRT text rendering with multi-line support and text shadows.
+- Option for 4K upscaling
 
 ### Changed
 
