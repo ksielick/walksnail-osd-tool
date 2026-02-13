@@ -1,4 +1,4 @@
-use image::{imageops::overlay, RgbaImage};
+use image::{imageops::{overlay, resize, FilterType}, RgbaImage};
 
 use crate::{
     font::{self, CharacterSize},
@@ -37,20 +37,27 @@ pub fn overlay_osd(
     osd_options: &OsdOptions,
     offset: (i32, i32),
 ) {
-    // TODO: check if this can be run in parallel
-    let osd_character_size = get_character_size(image.width(), image.height());
+    let base_character_size = get_character_size(image.width(), image.height());
+    let scale_factor = osd_options.scale / 100.0;
+    let scaled_width = (base_character_size.width() as f32 * scale_factor).round() as u32;
+    let scaled_height = (base_character_size.height() as f32 * scale_factor).round() as u32;
+
     for character in &osd_frame.glyphs {
         if character.index == 0 || osd_options.get_mask(&character.grid_position) {
             continue;
         }
-        if let Some(character_image) = font.get_character(character.index as usize, &osd_character_size) {
+        if let Some(character_image) = font.get_character(character.index as usize, &base_character_size) {
+            let scaled_image = if scaled_width != base_character_size.width() || scaled_height != base_character_size.height() {
+                resize(&character_image, scaled_width, scaled_height, FilterType::Lanczos3)
+            } else {
+                character_image
+            };
             let grid_position = &character.grid_position;
-            let (char_width, char_height) = character_image.dimensions();
             overlay(
                 image,
-                &character_image,
-                (grid_position.x as i32 * char_width as i32 + osd_options.position.x + offset.0).into(),
-                (grid_position.y as i32 * char_height as i32 + osd_options.position.y + offset.1).into(),
+                &scaled_image,
+                (grid_position.x as i32 * scaled_width as i32 + osd_options.position.x + offset.0).into(),
+                (grid_position.y as i32 * scaled_height as i32 + osd_options.position.y + offset.1).into(),
             )
         }
     }

@@ -8,8 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- Support for 4:3 aspect ratio videos (e.g., 1440x1080) with automatic OSD scaling.
-- Option to pad 4:3 videos with black bars to reach 16:9 aspect ratio.
+- OSD size slider (50-200%) to scale OSD characters for better visibility, especially on 4:3 video.
+- Automatic OSD horizontal centering when loading files or toggling "Pad 4:3 to 16:9".
+- Version number display in the top panel (reads from Cargo.toml automatically).
+
+### Fixed
+
+- OSD "Center" button now correctly accounts for 4:3 to 16:9 padding.
+- Extended horizontal position slider range (-500 to 700) to support large centering offsets.
 
 ## [0.4.2] - 2026-02-13
 

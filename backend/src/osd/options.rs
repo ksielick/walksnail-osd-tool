@@ -15,6 +15,8 @@ pub struct OsdOptions {
     #[serde(skip)]
     pub osd_playback_speed_factor: f32,
     pub masked_grid_positions: HashSet<Coordinates<u32>>,
+    #[derivative(Default(value = "100.0"))]
+    pub scale: f32,
 }
 
 impl OsdOptions {

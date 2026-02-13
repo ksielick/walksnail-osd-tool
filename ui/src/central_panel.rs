@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use backend::overlay::get_character_size;
 use backend::util::Coordinates;
 use egui::{
     vec2, Button, CentralPanel, Checkbox, CollapsingHeader, Color32, CursorIcon, Grid, Image, Rect, RichText,
@@ -7,7 +8,6 @@ use egui::{
 };
 
 use crate::{
-    osd_preview::{calculate_horizontal_offset, calculate_vertical_offset},
     util::{separator_with_space, tooltip_text},
     WalksnailOsdTool,
 };
@@ -30,7 +30,7 @@ impl WalksnailOsdTool {
 
                 separator_with_space(ui, 10.0);
 
-                self.rendering_options(ui);
+                self.rendering_options(ui, ctx);
             });
         });
     }
@@ -48,23 +48,12 @@ impl WalksnailOsdTool {
                             .on_hover_text(tooltip_text("Horizontal position of the flight controller OSD (pixels from the left edge of the video)."));
                         ui.horizontal(|ui| {
                             changed |= ui
-                                .add(Slider::new(&mut self.osd_options.position.x, -200..=700).text("Pixels"))
+                                .add(Slider::new(&mut self.osd_options.position.x, -500..=700).text("Pixels"))
                                 .changed();
 
                             if ui.button("Center").clicked() {
-                                if let (Some(video_info), Some(osd_file), Some(font_file)) =
-                                    (&self.video_info, &self.osd_file, &self.font_file)
-                                {
-                                    self.osd_options.position.x = calculate_horizontal_offset(
-                                        video_info.width,
-                                        osd_file
-                                            .frames
-                                            .get(self.osd_preview.preview_frame as usize - 1)
-                                            .unwrap(),
-                                        &font_file.character_size,
-                                    );
-                                    changed |= true;
-                                }
+                                self.auto_center_horizontal();
+                                changed |= true;
                             }
 
                             if ui.button("Reset").clicked() {
@@ -84,17 +73,27 @@ impl WalksnailOsdTool {
                                 .changed();
 
                             if ui.button("Center").clicked() {
-                                if let (Some(video_info), Some(osd_file), Some(font_file)) =
+                                if let (Some(video_info), Some(osd_file), Some(_)) =
                                     (&self.video_info, &self.osd_file, &self.font_file)
                                 {
-                                    self.osd_options.position.y = calculate_vertical_offset(
-                                        video_info.height,
-                                        osd_file
-                                            .frames
-                                            .get(self.osd_preview.preview_frame as usize - 1)
-                                            .unwrap(),
-                                        &font_file.character_size,
-                                    );
+                                    let is_4_3 = (video_info.width as f32 / video_info.height as f32) < 1.5;
+                                    let effective_width = if self.render_settings.pad_4_3_to_16_9 && is_4_3 {
+                                        video_info.height * 16 / 9
+                                    } else {
+                                        video_info.width
+                                    };
+                                    let base_char_size = get_character_size(effective_width, video_info.height);
+                                    let scale_factor = self.osd_options.scale / 100.0;
+                                    let scaled_char_height = (base_char_size.height() as f32 * scale_factor).round() as i32;
+
+                                    let frame = osd_file
+                                        .frames
+                                        .get(self.osd_preview.preview_frame as usize - 1)
+                                        .unwrap();
+                                    let min_y = frame.glyphs.iter().map(|g| g.grid_position.y).min().unwrap() as i32;
+                                    let max_y = frame.glyphs.iter().map(|g| g.grid_position.y).max().unwrap() as i32;
+                                    let pixel_range = (max_y - min_y + 1) * scaled_char_height;
+                                    self.osd_options.position.y = (video_info.height as i32 - pixel_range) / 2 - min_y * scaled_char_height;
                                     changed |= true
                                 }
                             }
@@ -121,6 +120,19 @@ impl WalksnailOsdTool {
                             }
                             let masked_positions = self.osd_options.masked_grid_positions.len();
                             ui.label(format!("{masked_positions} positions masked"));
+                        });
+                        ui.end_row();
+
+                        ui.label("OSD size")
+                            .on_hover_text(tooltip_text("Scale of the OSD characters as a percentage. 100% is the default size for the video resolution."));
+                        ui.horizontal(|ui| {
+                            changed |= ui
+                                .add(Slider::new(&mut self.osd_options.scale, 50.0..=200.0).fixed_decimals(0).text("%"))
+                                .changed();
+                            if ui.button("Reset").clicked() {
+                                self.osd_options.scale = 100.0;
+                                changed |= true;
+                            }
                         });
                         ui.end_row();
 
@@ -233,15 +245,20 @@ impl WalksnailOsdTool {
             .default_open(true)
             .show_unindented(ui, |ui| {
                 if let (Some(handle), Some(video_info)) = (&self.osd_preview.texture_handle, &self.video_info) {
-                    let preview_width = ui.available_width();
+                    let padding = 20.0;
+                    let preview_width = ui.available_width() - padding;
                     let aspect_ratio = video_info.width as f32 / video_info.height as f32;
                     let preview_height = preview_width / aspect_ratio;
-                    let image = Image::new(handle).fit_to_exact_size(Vec2::new(preview_width, preview_height));
-                    let rect = ui.add(image.bg_fill(Color32::LIGHT_GRAY)).rect;
+                    let texture_handle = handle.clone();
 
-                    if self.osd_preview.mask_edit_mode_enabled {
-                        self.draw_grid(ui, ctx, rect);
-                    }
+                    ui.vertical_centered(|ui| {
+                        let image = Image::new(&texture_handle).fit_to_exact_size(Vec2::new(preview_width, preview_height));
+                        let rect = ui.add(image.bg_fill(Color32::LIGHT_GRAY)).rect;
+
+                        if self.osd_preview.mask_edit_mode_enabled {
+                            self.draw_grid(ui, ctx, rect);
+                        }
+                    });
 
                     ui.horizontal(|ui| {
                         ui.label("Preview frame").on_hover_text(tooltip_text(
@@ -333,8 +350,9 @@ impl WalksnailOsdTool {
         }
     }
 
-    fn rendering_options(&mut self, ui: &mut Ui) {
+    fn rendering_options(&mut self, ui: &mut Ui, ctx: &egui::Context) {
         let mut changed = false;
+        let mut pad_toggled = false;
         CollapsingHeader::new(RichText::new("Rendering Options").heading())
             .default_open(true)
             .show_unindented(ui, |ui| {
@@ -411,7 +429,11 @@ impl WalksnailOsdTool {
                         let is_4_3 = self.video_info.as_ref().map(|v| (v.width as f32 / v.height as f32) < 1.5).unwrap_or(false);
                         if is_4_3 {
                             ui.label("Pad 4:3 to 16:9").on_hover_text(tooltip_text("Add black bars on the sides to transform 4:3 video into 16:9."));
-                            changed |= ui.add(Checkbox::without_text(&mut self.render_settings.pad_4_3_to_16_9)).changed();
+                            let pad_changed = ui.add(Checkbox::without_text(&mut self.render_settings.pad_4_3_to_16_9)).changed();
+                            if pad_changed {
+                                pad_toggled = true;
+                                changed |= true;
+                            }
                             ui.end_row();
                         }
 
@@ -424,8 +446,36 @@ impl WalksnailOsdTool {
                     });
             });
 
+        if pad_toggled {
+            self.auto_center_horizontal();
+        }
         if changed {
+            self.update_osd_preview(ctx);
             self.config_changed = Some(Instant::now());
+        }
+    }
+    pub fn auto_center_horizontal(&mut self) {
+        if let (Some(video_info), Some(osd_file), Some(_)) =
+            (&self.video_info, &self.osd_file, &self.font_file)
+        {
+            let is_4_3 = (video_info.width as f32 / video_info.height as f32) < 1.5;
+            let effective_width = if self.render_settings.pad_4_3_to_16_9 && is_4_3 {
+                video_info.height * 16 / 9
+            } else {
+                video_info.width
+            };
+            let base_char_size = get_character_size(effective_width, video_info.height);
+            let scale_factor = self.osd_options.scale / 100.0;
+            let scaled_char_width = (base_char_size.width() as f32 * scale_factor).round() as i32;
+
+            let frame = osd_file
+                .frames
+                .get(self.osd_preview.preview_frame as usize - 1)
+                .unwrap();
+            let min_x = frame.glyphs.iter().map(|g| g.grid_position.x).min().unwrap() as i32;
+            let max_x = frame.glyphs.iter().map(|g| g.grid_position.x).max().unwrap() as i32;
+            let pixel_range = (max_x - min_x + 1) * scaled_char_width;
+            self.osd_options.position.x = (video_info.width as i32 - pixel_range) / 2 - min_x * scaled_char_width;
         }
     }
 }

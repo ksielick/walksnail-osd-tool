@@ -97,10 +97,13 @@ impl WalksnailOsdTool {
                         } else {
                             "––:––".into()
                         };
-                        ui.label(format!(
-                            "Time remaining: {}, fps: {:.1}, speed: {:.3}x",
-                            time_remaining_string, fps, speed
-                        ));
+                        ui.label(
+                            RichText::new(format!(
+                                "Time remaining: {}, fps: {:.1}, speed: {:.3}x",
+                                time_remaining_string, fps, speed
+                            ))
+                            .monospace(),
+                        );
                     });
                 });
             }

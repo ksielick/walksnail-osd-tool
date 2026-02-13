@@ -79,7 +79,7 @@ fn main() -> Result<(), eframe::Error> {
                 ffprobe_path,
                 encoders,
                 config,
-                build_info::get_version().to_string(),
+                format!("v{} {}", env!("CARGO_PKG_VERSION"), build_info::get_version()),
                 build_info::get_target().to_string(),
                 promise,
             )))

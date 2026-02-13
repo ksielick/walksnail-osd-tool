@@ -5,7 +5,7 @@ edition = "2021"
 description = "Cross-platform tool for rendering the flight controller OSD and SRT data from the Walksnail Avatar HD FPV system on top of the goggle or VRX recording."
 authors = ["Alexander van Saase"]
 keywords = ["Walksnail Avatar", "FPV", "Video"]
-repository = "https://github.com/avsaase/walksnail-osd-tool"
+repository = "https://github.com/ksielick/walksnail-osd-tool"
 readme = "README.md"
 license = "GPL-3.0"
 

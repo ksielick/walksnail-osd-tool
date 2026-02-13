@@ -34,6 +34,7 @@ impl WalksnailOsdTool {
                 self.import_font_file(&file_handles);
                 self.import_srt_file(&file_handles);
 
+                self.auto_center_horizontal();
                 self.update_osd_preview(ctx);
                 self.render_status.reset();
             }
@@ -53,6 +54,7 @@ impl WalksnailOsdTool {
             self.import_osd_file(&file_handles);
             self.import_font_file(&file_handles);
             self.import_srt_file(&file_handles);
+            self.auto_center_horizontal();
             self.update_osd_preview(ctx);
             self.render_status.reset();
         }
@@ -128,7 +130,7 @@ impl WalksnailOsdTool {
                         ui.label("License:");
                         ui.hyperlink_to(
                             "General Public License v3.0",
-                            "https://github.com/avsaase/walksnail-osd-tool/blob/master/LICENSE.md",
+                            "https://github.com/ksielick/walksnail-osd-tool/blob/master/LICENSE.md",
                         );
                         ui.end_row();
                     });

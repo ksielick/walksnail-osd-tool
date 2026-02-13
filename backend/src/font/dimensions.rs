@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
+
 use super::FontFileError;
 
 pub(crate) const CHARACTER_WIDTH_4K: u32 = 72;
@@ -13,7 +15,7 @@ pub(crate) const CHARACTER_HEIGHT_SMALL: u32 = 36;
 pub(crate) const CHARACTER_WIDTH_RACE: u32 = 18;
 pub(crate) const CHARACTER_HEIGHT_RACE: u32 = 27;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CharacterSize {
     Large,
     Small,

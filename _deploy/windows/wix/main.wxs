@@ -192,7 +192,7 @@
         <Icon Id='ProductICO' SourceFile='resources\icons\app-icon.ico' />
         <Property Id='ARPPRODUCTICON' Value='ProductICO' />
 
-        <Property Id='ARPHELPLINK' Value='https://github.com/avsaase/walksnail-osd-tool' />
+        <Property Id='ARPHELPLINK' Value='https://github.com/ksielick/walksnail-osd-tool/releases' />
 
         <UI>
             <UIRef Id='WixUI_FeatureTree' />

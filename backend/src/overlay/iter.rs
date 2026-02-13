@@ -113,7 +113,7 @@ impl Iterator for FrameOverlayIter<'_> {
                 let mut x_offset = 0;
                 if self.pad_4_3_to_16_9 && is_4_3 {
                     let final_width = video_frame.height * 16 / 9;
-                    let mut padded_image = RgbaImage::new(final_width, video_frame.height);
+                    let mut padded_image = RgbaImage::from_pixel(final_width, video_frame.height, Rgba([0, 0, 0, 255]));
                     x_offset = (final_width - video_frame.width) / 2;
                     image::imageops::overlay(&mut padded_image, &frame_image, x_offset as i64, 0);
                     frame_image = padded_image;

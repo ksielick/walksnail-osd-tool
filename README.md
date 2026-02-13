@@ -3,9 +3,9 @@
 </p>
 <h1 align="center">Walksnail OSD Tool</h1>
 
-[![Latest release](https://img.shields.io/github/v/release/avsaase/walksnail-osd-tool?include_prereleases&label=latest%20release)](https://github.com/avsaase/walksnail-osd-tool/releases/latest)
-[![Latest build](https://img.shields.io/github/last-commit/avsaase/walksnail-osd-tool/master?label=latest%20build)](https://nightly.link/avsaase/walksnail-osd-tool/workflows/release.yaml/master/walksnail-osd-tool-all-platforms.zip)
-[![Totally awesome](https://img.shields.io/badge/totally%20awesome-true-blue)](https://github.com/avsaase/walksnail-osd-tool)
+[![Latest release](https://img.shields.io/github/v/release/ksielick/walksnail-osd-tool?include_prereleases&label=latest%20release)](https://github.com/ksielick/walksnail-osd-tool/releases)
+[![Latest build](https://img.shields.io/github/last-commit/ksielick/walksnail-osd-tool/master?label=latest%20build)](https://nightly.link/ksielick/walksnail-osd-tool/workflows/release.yaml/master/walksnail-osd-tool-all-platforms.zip)
+[![Totally awesome](https://img.shields.io/badge/totally%20awesome-true-blue)](https://github.com/ksielick/walksnail-osd-tool)
 
 Cross-platform tool for rendering the flight controller OSD and SRT data from the Walksnail Avatar HD FPV system on top of the goggle or VRX recording.
 
@@ -25,15 +25,15 @@ Cross-platform tool for rendering the flight controller OSD and SRT data from th
 - Upscale output video to 1440p for higher quality when uploading to YouTube.
 - Mask OSD items ([demo](https://imgur.com/u8xi2tX)).
 
-Anything else? Open a feature request [here](https://github.com/avsaase/walksnail-osd-tool/issues/new?assignees=&labels=enhancement&template=feature_request.yaml).
+Anything else? Open a feature request [here](https://github.com/ksielick/walksnail-osd-tool/issues/new?assignees=&labels=enhancement&template=feature_request.yaml).
 
 ## Installation
 
 ### Windows
-Download and run the installer from the [latest release](https://github.com/avsaase/walksnail-osd-tool/releases/latest).
+Download and run the installer from the [latest release](https://github.com/ksielick/walksnail-osd-tool/releases).
 
 ### MacOS
-Download the app bundle for your processor architecture from the [latest release](https://github.com/avsaase/walksnail-osd-tool/releases/latest) and drag it to your Applications folder.
+Download the app bundle for your processor architecture from the [latest release](https://github.com/ksielick/walksnail-osd-tool/releases) and drag it to your Applications folder.
 
 <details>
 <summary>Instructions for running the first time</summary>
@@ -48,7 +48,7 @@ The project builds on Ubuntu in CI but I don't know enough about packaging for L
 
 ### Building from source
 1. Install the [Rust toolchain](https://www.rust-lang.org/tools/install).
-2. Run `cargo install --git https://github.com/avsaase/walksnail-osd-tool.git`. The executable will be installed in `$HOME/.cargo/bin/` and added to your path.
+2. Run `cargo install --git https://github.com/ksielick/walksnail-osd-tool.git`. The executable will be installed in `$HOME/.cargo/bin/` and added to your path.
 3. To run the app you need the `ffmpeg` and `ffprobe` binaries in your `path` or placed next to the executable you just build.
 4. Run the app with `walksnail-osd-tool`.
 
