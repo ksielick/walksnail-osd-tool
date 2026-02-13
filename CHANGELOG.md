@@ -4,7 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2024-03-23
+
+## [Unreleased] - 2026-02-13
+
+### Added
+
+- Support for "Ascent" SRT format from Walksnail Avatar systems.
+- Parsing of additional SRT fields: Hz, Sp, and Gp.
+- Improved SRT text rendering with multi-line support and text shadows.
+
+### Changed
+
+- Updated `SrtFrameData` to support string-based channel names (e.g., "AUTO").
+- Refined SRT overlay rendering logic for better visibility.
+
+[0.3.0] - 2024-03-23
 
 ### Added
 
