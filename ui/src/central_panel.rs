@@ -1,7 +1,6 @@
 use std::time::Instant;
 
-use backend::overlay::get_character_size;
-use backend::util::Coordinates;
+use backend::{overlay::get_character_size, util::Coordinates};
 use egui::{
     vec2, Button, CentralPanel, Checkbox, CollapsingHeader, Color32, CursorIcon, Grid, Image, Rect, RichText,
     ScrollArea, Sense, Slider, Stroke, Ui, Vec2,
@@ -252,7 +251,8 @@ impl WalksnailOsdTool {
                     let texture_handle = handle.clone();
 
                     ui.vertical_centered(|ui| {
-                        let image = Image::new(&texture_handle).fit_to_exact_size(Vec2::new(preview_width, preview_height));
+                        let image =
+                            Image::new(&texture_handle).fit_to_exact_size(Vec2::new(preview_width, preview_height));
                         let rect = ui.add(image.bg_fill(Color32::LIGHT_GRAY)).rect;
 
                         if self.osd_preview.mask_edit_mode_enabled {
@@ -455,9 +455,7 @@ impl WalksnailOsdTool {
         }
     }
     pub fn auto_center_horizontal(&mut self) {
-        if let (Some(video_info), Some(osd_file), Some(_)) =
-            (&self.video_info, &self.osd_file, &self.font_file)
-        {
+        if let (Some(video_info), Some(osd_file), Some(_)) = (&self.video_info, &self.osd_file, &self.font_file) {
             let is_4_3 = (video_info.width as f32 / video_info.height as f32) < 1.5;
             let effective_width = if self.render_settings.pad_4_3_to_16_9 && is_4_3 {
                 video_info.height * 16 / 9

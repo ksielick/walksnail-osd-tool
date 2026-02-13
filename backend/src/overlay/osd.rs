@@ -1,4 +1,7 @@
-use image::{imageops::{overlay, resize, FilterType}, RgbaImage};
+use image::{
+    imageops::{overlay, resize, FilterType},
+    RgbaImage,
+};
 
 use crate::{
     font::{self, CharacterSize},
@@ -47,11 +50,12 @@ pub fn overlay_osd(
             continue;
         }
         if let Some(character_image) = font.get_character(character.index as usize, &base_character_size) {
-            let scaled_image = if scaled_width != base_character_size.width() || scaled_height != base_character_size.height() {
-                resize(&character_image, scaled_width, scaled_height, FilterType::Lanczos3)
-            } else {
-                character_image
-            };
+            let scaled_image =
+                if scaled_width != base_character_size.width() || scaled_height != base_character_size.height() {
+                    resize(&character_image, scaled_width, scaled_height, FilterType::Lanczos3)
+                } else {
+                    character_image
+                };
             let grid_position = &character.grid_position;
             overlay(
                 image,
