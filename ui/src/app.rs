@@ -233,8 +233,7 @@ impl WalksnailOsdTool {
                     srt_file
                         .frames
                         .iter()
-                        .filter(|f| f.start_time_secs <= timestamp)
-                        .last()
+                        .rfind(|f| f.start_time_secs <= timestamp)
                         .unwrap_or_else(|| srt_file.frames.first().unwrap())
                 });
 
@@ -276,7 +275,7 @@ impl WalksnailOsdTool {
     fn save_config_if_changed(&mut self) {
         if self
             .config_changed
-            .map_or(false, |t| t.elapsed() > Duration::from_millis(2000))
+            .is_some_and(|t| t.elapsed() > Duration::from_millis(2000))
         {
             let config: AppConfig = self.into();
             config.save();

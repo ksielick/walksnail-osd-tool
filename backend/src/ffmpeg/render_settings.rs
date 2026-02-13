@@ -12,13 +12,17 @@ pub enum UpscaleTarget {
     P2160,
 }
 
-impl ToString for UpscaleTarget {
-    fn to_string(&self) -> String {
-        match self {
-            UpscaleTarget::None => "None".to_string(),
-            UpscaleTarget::P1440 => "1440p".to_string(),
-            UpscaleTarget::P2160 => "2160p".to_string(),
-        }
+impl std::fmt::Display for UpscaleTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                UpscaleTarget::None => "None",
+                UpscaleTarget::P1440 => "1440p",
+                UpscaleTarget::P2160 => "2160p",
+            }
+        )
     }
 }
 

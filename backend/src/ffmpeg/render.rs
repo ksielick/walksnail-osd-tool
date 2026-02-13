@@ -191,7 +191,7 @@ fn parse_val(s: &str, key: &str) -> Option<String> {
             }
             continue;
         }
-        if c.is_digit(10) || c == '.' || c == '-' {
+        if c.is_ascii_digit() || c == '.' || c == '-' {
             result.push(c);
             found_content = true;
         } else if found_content {
