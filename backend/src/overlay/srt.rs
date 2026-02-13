@@ -9,6 +9,7 @@ pub fn overlay_srt_data(
     srt_data: &SrtFrameData,
     font: &rusttype::Font,
     srt_options: &SrtOptions,
+    offset: (i32, i32),
 ) {
     let mut segments = Vec::new();
 
@@ -117,8 +118,8 @@ pub fn overlay_srt_data(
     let shadow_color = Rgba([0u8, 0u8, 0u8, 180u8]);
 
     for (i, line) in lines.iter().enumerate() {
-        let x = x_start;
-        let y = y_start + (i as i32 * line_height);
+        let x = x_start + offset.0;
+        let y = y_start + (i as i32 * line_height) + offset.1;
 
         // Draw shadow (1px offset)
         draw_text_mut(image, shadow_color, x + 1, y + 1, scale, font, line);

@@ -30,7 +30,13 @@ pub fn get_character_size(width: u32, height: u32) -> CharacterSize {
 }
 
 #[inline]
-pub fn overlay_osd(image: &mut RgbaImage, osd_frame: &osd::Frame, font: &font::FontFile, osd_options: &OsdOptions) {
+pub fn overlay_osd(
+    image: &mut RgbaImage,
+    osd_frame: &osd::Frame,
+    font: &font::FontFile,
+    osd_options: &OsdOptions,
+    offset: (i32, i32),
+) {
     // TODO: check if this can be run in parallel
     let osd_character_size = get_character_size(image.width(), image.height());
     for character in &osd_frame.glyphs {
@@ -43,8 +49,8 @@ pub fn overlay_osd(image: &mut RgbaImage, osd_frame: &osd::Frame, font: &font::F
             overlay(
                 image,
                 &character_image,
-                (grid_position.x as i32 * char_width as i32 + osd_options.position.x).into(),
-                (grid_position.y as i32 * char_height as i32 + osd_options.position.y).into(),
+                (grid_position.x as i32 * char_width as i32 + osd_options.position.x + offset.0).into(),
+                (grid_position.y as i32 * char_height as i32 + osd_options.position.y + offset.1).into(),
             )
         }
     }

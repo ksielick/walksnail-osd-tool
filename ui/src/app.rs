@@ -238,18 +238,21 @@ impl WalksnailOsdTool {
                     })
             });
 
+            let osd_preview_image = create_osd_preview(
+                video_info.width,
+                video_info.height,
+                osd_frame,
+                srt_frame,
+                font_file,
+                self.srt_font.as_ref().unwrap(),
+                &self.osd_options,
+                &self.srt_options,
+                self.render_settings.pad_4_3_to_16_9,
+            );
+
             let image = egui::ColorImage::from_rgba_unmultiplied(
-                [video_info.width as usize, video_info.height as usize],
-                &create_osd_preview(
-                    video_info.width,
-                    video_info.height,
-                    osd_frame,
-                    srt_frame,
-                    font_file,
-                    self.srt_font.as_ref().unwrap(),
-                    &self.osd_options,
-                    &self.srt_options,
-                ),
+                [osd_preview_image.width() as usize, osd_preview_image.height() as usize],
+                &osd_preview_image,
             );
             let handle = ctx.load_texture("OSD preview", image, egui::TextureOptions::default());
             self.osd_preview.texture_handle = Some(handle);

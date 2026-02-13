@@ -9,6 +9,8 @@ impl WalksnailOsdTool {
             ui.horizontal(|ui| {
                 self.import_files(ui, ctx);
                 self.reset_files(ui);
+                ui.add_space(30.0);
+                ui.label(RichText::new(&self.app_version).weak());
                 ui.add_space(ui.available_width() - 55.0);
                 self.toggle_light_dark_theme(ui, ctx);
                 self.about_window(ui, ctx);

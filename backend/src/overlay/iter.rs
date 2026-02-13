@@ -30,6 +30,7 @@ pub struct FrameOverlayIter<'a> {
     ffmpeg_sender: Sender<FromFfmpegMessage>,
     ffmpeg_receiver: Receiver<ToFfmpegMessage>,
     chroma_key: Option<Rgba<u8>>,
+    pad_4_3_to_16_9: bool,
 }
 
 impl<'a> FrameOverlayIter<'a> {
@@ -46,6 +47,7 @@ impl<'a> FrameOverlayIter<'a> {
         ffmpeg_sender: Sender<FromFfmpegMessage>,
         ffmpeg_receiver: Receiver<ToFfmpegMessage>,
         chroma_key: Option<[f32; 3]>,
+        pad_4_3_to_16_9: bool,
     ) -> Self {
         let mut osd_frames_iter = osd_frames.into_iter();
         let mut srt_frames_iter = srt_frames.into_iter();
@@ -67,6 +69,7 @@ impl<'a> FrameOverlayIter<'a> {
             ffmpeg_sender,
             ffmpeg_receiver,
             chroma_key,
+            pad_4_3_to_16_9,
         }
     }
 }
@@ -105,20 +108,39 @@ impl Iterator for FrameOverlayIter<'_> {
                     RgbaImage::from_raw(video_frame.width, video_frame.height, video_frame.data).unwrap()
                 };
 
+                // Internal letterboxing
+                let is_4_3 = (video_frame.width as f32 / video_frame.height as f32) < 1.5;
+                let mut x_offset = 0;
+                if self.pad_4_3_to_16_9 && is_4_3 {
+                    let final_width = video_frame.height * 16 / 9;
+                    let mut padded_image = RgbaImage::new(final_width, video_frame.height);
+                    x_offset = (final_width - video_frame.width) / 2;
+                    image::imageops::overlay(&mut padded_image, &frame_image, x_offset as i64, 0);
+                    frame_image = padded_image;
+                    video_frame.width = final_width;
+                }
+
                 overlay_osd(
                     &mut frame_image,
                     &self.current_osd_frame,
                     &self.font_file,
                     &self.osd_options,
+                    (x_offset as i32, 0),
                 );
 
                 if let Some(current_srt_frame) = &self.current_srt_frame {
                     if let Some(srt_data) = &current_srt_frame.data {
-                        overlay_srt_data(&mut frame_image, srt_data, &self.srt_font, &self.srt_options);
+                        overlay_srt_data(
+                            &mut frame_image,
+                            srt_data,
+                            &self.srt_font,
+                            &self.srt_options,
+                            (x_offset as i32, 0),
+                        );
                     }
                 }
 
-                video_frame.data = frame_image.as_raw().to_vec();
+                video_frame.data = frame_image.into_raw();
                 Some(video_frame)
             }
             other_event => {

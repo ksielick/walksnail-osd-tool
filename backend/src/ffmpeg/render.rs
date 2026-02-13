@@ -69,6 +69,7 @@ pub fn start_video_render(
         } else {
             None
         },
+        render_settings.pad_4_3_to_16_9,
     );
 
     // On another thread run the decoder iterator to completion and feed the output to the encoder's stdin
@@ -140,7 +141,7 @@ pub fn spawn_encoder(
         .create_no_window()
         .format("rawvideo")
         .pix_fmt("rgba")
-        .size(width, height)
+        .size(final_width, final_height)
         .rate(frame_rate)
         .input("-");
 
@@ -154,28 +155,6 @@ pub fn spawn_encoder(
             filters.push("scale=3840x2160:flags=bicubic".to_string());
         }
         UpscaleTarget::None => {}
-    }
-
-    if pad_4_3_to_16_9 && is_4_3 {
-        let pad_width = if upscale != UpscaleTarget::None {
-            match upscale {
-                UpscaleTarget::P1440 => 2560,
-                UpscaleTarget::P2160 => 3840,
-                _ => unreachable!(),
-            }
-        } else {
-            final_width
-        };
-        let pad_height = if upscale != UpscaleTarget::None {
-            match upscale {
-                UpscaleTarget::P1440 => 1440,
-                UpscaleTarget::P2160 => 2160,
-                _ => unreachable!(),
-            }
-        } else {
-            final_height
-        };
-        filters.push(format!("pad={}:{}:(ow-iw)/2:0:black", pad_width, pad_height));
     }
 
     if !filters.is_empty() {

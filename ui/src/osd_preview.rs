@@ -16,13 +16,26 @@ pub fn create_osd_preview(
     srt_font: &rusttype::Font,
     osd_options: &OsdOptions,
     srt_options: &SrtOptions,
+    pad_4_3_to_16_9: bool,
 ) -> RgbaImage {
-    let mut image = RgbaImage::new(width, height);
+    let is_4_3 = (width as f32 / height as f32) < 1.5;
+    let (final_width, final_height, x_offset) = if pad_4_3_to_16_9 && is_4_3 {
+        (height * 16 / 9, height, (height * 16 / 9 - width) / 2)
+    } else {
+        (width, height, 0)
+    };
 
-    overlay_osd(&mut image, osd_frame, font, osd_options);
+    let mut image = RgbaImage::new(final_width, final_height);
+
+    // If we're not padding, the image is just width x height transparent
+    // In preview we probably want to see where the video would be
+    // But Render is usually on top of video.
+    // For preview, we just want to ensure OSD/SRT are positioned correctly.
+
+    overlay_osd(&mut image, osd_frame, font, osd_options, (x_offset as i32, 0));
     if let Some(srt_frame) = srt_frame {
         if let Some(srt_data) = &srt_frame.data {
-            overlay_srt_data(&mut image, srt_data, srt_font, srt_options);
+            overlay_srt_data(&mut image, srt_data, srt_font, srt_options, (x_offset as i32, 0));
         }
     }
 
