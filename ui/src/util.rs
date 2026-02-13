@@ -40,6 +40,10 @@ impl WalksnailOsdTool {
             self.video_file = Some(video_file.clone());
             self.video_info = VideoInfo::get(video_file, &self.dependencies.ffprobe_path).ok();
 
+            if let Some(video_info) = &self.video_info {
+                self.render_settings.bitrate_mbps = (video_info.bitrate as f32 / 1_000_000.0).round() as u32;
+            }
+
             // Try to load the matching OSD and SRT files
             self.import_osd_file(&[matching_file_with_extension(video_file, "osd")]);
             self.import_srt_file(&[matching_file_with_extension(video_file, "srt")]);
