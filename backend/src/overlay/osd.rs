@@ -5,12 +5,25 @@ use crate::{
     osd::{self, OsdOptions},
 };
 
-pub fn get_character_size(lines: u32) -> CharacterSize {
-    match lines {
+pub fn get_character_size(width: u32, height: u32) -> CharacterSize {
+    let is_4_3 = (width as f32 / height as f32) < 1.5;
+    match height {
         540 => CharacterSize::Race,
         720 => CharacterSize::Small,
-        1080 => CharacterSize::Large,
-        1440 => CharacterSize::XLarge,
+        1080 => {
+            if is_4_3 {
+                CharacterSize::Small
+            } else {
+                CharacterSize::Large
+            }
+        }
+        1440 => {
+            if is_4_3 {
+                CharacterSize::Large
+            } else {
+                CharacterSize::XLarge
+            }
+        }
         2160 => CharacterSize::Ultra,
         _ => CharacterSize::Large,
     }
@@ -19,7 +32,7 @@ pub fn get_character_size(lines: u32) -> CharacterSize {
 #[inline]
 pub fn overlay_osd(image: &mut RgbaImage, osd_frame: &osd::Frame, font: &font::FontFile, osd_options: &OsdOptions) {
     // TODO: check if this can be run in parallel
-    let osd_character_size = get_character_size(image.height());
+    let osd_character_size = get_character_size(image.width(), image.height());
     for character in &osd_frame.glyphs {
         if character.index == 0 || osd_options.get_mask(&character.grid_position) {
             continue;

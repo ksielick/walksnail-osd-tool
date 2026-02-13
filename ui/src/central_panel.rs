@@ -408,6 +408,13 @@ impl WalksnailOsdTool {
                         }
                         ui.end_row();
 
+                        let is_4_3 = self.video_info.as_ref().map(|v| (v.width as f32 / v.height as f32) < 1.5).unwrap_or(false);
+                        if is_4_3 {
+                            ui.label("Pad 4:3 to 16:9").on_hover_text(tooltip_text("Add black bars on the sides to transform 4:3 video into 16:9."));
+                            changed |= ui.add(Checkbox::without_text(&mut self.render_settings.pad_4_3_to_16_9)).changed();
+                            ui.end_row();
+                        }
+
                         ui.label("Chroma key").on_hover_text(tooltip_text("Render the video with a chroma key instead of the input video so the OSD can be overlay in video editing software."));
                         ui.horizontal(|ui| {
                             changed |= ui.add(Checkbox::without_text(&mut self.render_settings.use_chroma_key)).changed();

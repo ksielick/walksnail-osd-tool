@@ -43,6 +43,7 @@ pub fn start_video_render(
         &render_settings.encoder,
         output_video,
         render_settings.upscale,
+        render_settings.pad_4_3_to_16_9,
     )?;
 
     // Channels to communicate with ffmpeg handler thread
@@ -123,8 +124,17 @@ pub fn spawn_encoder(
     video_encoder: &Encoder,
     output_video: &PathBuf,
     upscale: UpscaleTarget,
+    pad_4_3_to_16_9: bool,
 ) -> Result<FfmpegChild, FfmpegError> {
     let mut encoder_command = FfmpegCommand::new_with_path(ffmpeg_path);
+
+    let is_4_3 = (width as f32 / height as f32) < 1.5;
+    let (final_width, final_height) = if pad_4_3_to_16_9 && is_4_3 {
+        // Calculate 16:9 width based on height
+        (height * 16 / 9, height)
+    } else {
+        (width, height)
+    };
 
     encoder_command
         .create_no_window()
@@ -134,14 +144,42 @@ pub fn spawn_encoder(
         .rate(frame_rate)
         .input("-");
 
+    let mut filters = Vec::new();
+
     match upscale {
         UpscaleTarget::P1440 => {
-            encoder_command.args(["-vf", "scale=2560x1440:flags=bicubic"]);
+            filters.push("scale=2560x1440:flags=bicubic".to_string());
         }
         UpscaleTarget::P2160 => {
-            encoder_command.args(["-vf", "scale=3840x2160:flags=bicubic"]);
+            filters.push("scale=3840x2160:flags=bicubic".to_string());
         }
         UpscaleTarget::None => {}
+    }
+
+    if pad_4_3_to_16_9 && is_4_3 {
+        let pad_width = if upscale != UpscaleTarget::None {
+            match upscale {
+                UpscaleTarget::P1440 => 2560,
+                UpscaleTarget::P2160 => 3840,
+                _ => unreachable!(),
+            }
+        } else {
+            final_width
+        };
+        let pad_height = if upscale != UpscaleTarget::None {
+            match upscale {
+                UpscaleTarget::P1440 => 1440,
+                UpscaleTarget::P2160 => 2160,
+                _ => unreachable!(),
+            }
+        } else {
+            final_height
+        };
+        filters.push(format!("pad={}:{}:(ow-iw)/2:0:black", pad_width, pad_height));
+    }
+
+    if !filters.is_empty() {
+        encoder_command.args(["-vf", &filters.join(",")]);
     }
 
     encoder_command
