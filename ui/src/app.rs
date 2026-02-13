@@ -216,8 +216,7 @@ impl WalksnailOsdTool {
     }
 
     pub fn update_osd_preview(&mut self, ctx: &egui::Context) {
-        if let (Some(video_info), Some(osd_file), Some(font_file), Some(srt_file)) =
-            (&self.video_info, &self.osd_file, &self.font_file, &self.srt_file)
+        if let (Some(video_info), Some(osd_file), Some(font_file)) = (&self.video_info, &self.osd_file, &self.font_file)
         {
             let osd_frame = osd_file
                 .frames
@@ -225,17 +224,19 @@ impl WalksnailOsdTool {
                 .unwrap();
             let timestamp = osd_frame.time_millis as f32 / 1000.0;
 
-            let srt_frame = srt_file
-                .frames
-                .iter()
-                .find(|f| f.start_time_secs <= timestamp && f.end_time_secs >= timestamp)
-                .unwrap_or_else(|| {
-                    srt_file
-                        .frames
-                        .iter()
-                        .rfind(|f| f.start_time_secs <= timestamp)
-                        .unwrap_or_else(|| srt_file.frames.first().unwrap())
-                });
+            let srt_frame = self.srt_file.as_ref().map(|srt_file| {
+                srt_file
+                    .frames
+                    .iter()
+                    .find(|f| f.start_time_secs <= timestamp && f.end_time_secs >= timestamp)
+                    .unwrap_or_else(|| {
+                        srt_file
+                            .frames
+                            .iter()
+                            .rfind(|f| f.start_time_secs <= timestamp)
+                            .unwrap_or_else(|| srt_file.frames.first().unwrap())
+                    })
+            });
 
             let image = egui::ColorImage::from_rgba_unmultiplied(
                 [video_info.width as usize, video_info.height as usize],

@@ -545,7 +545,7 @@ checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
 name = "backend"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "claims",
  "confy",
@@ -4496,7 +4496,7 @@ dependencies = [
 
 [[package]]
 name = "walksnail-osd-tool"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "backend",
  "crossbeam-channel",

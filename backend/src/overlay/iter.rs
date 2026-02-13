@@ -26,7 +26,7 @@ pub struct FrameOverlayIter<'a> {
     srt_options: SrtOptions,
     srt_font: rusttype::Font<'a>,
     current_osd_frame: osd::Frame,
-    current_srt_frame: srt::SrtFrame,
+    current_srt_frame: Option<srt::SrtFrame>,
     ffmpeg_sender: Sender<FromFfmpegMessage>,
     ffmpeg_receiver: Receiver<ToFfmpegMessage>,
     chroma_key: Option<Rgba<u8>>,
@@ -50,7 +50,7 @@ impl<'a> FrameOverlayIter<'a> {
         let mut osd_frames_iter = osd_frames.into_iter();
         let mut srt_frames_iter = srt_frames.into_iter();
         let first_osd_frame = osd_frames_iter.next().unwrap();
-        let first_srt_frame = srt_frames_iter.next().unwrap();
+        let first_srt_frame = srt_frames_iter.next();
         let chroma_key =
             chroma_key.map(|c| Rgba([(c[0] * 255.0) as u8, (c[1] * 255.0) as u8, (c[2] * 255.0) as u8, 255]));
         Self {
@@ -95,7 +95,7 @@ impl Iterator for FrameOverlayIter<'_> {
                 if let Some(next_srt_frame) = self.srt_frames_iter.peek() {
                     let next_srt_start_time_secs = next_srt_frame.start_time_secs;
                     if video_frame.timestamp > next_srt_start_time_secs {
-                        self.current_srt_frame = self.srt_frames_iter.next().unwrap();
+                        self.current_srt_frame = self.srt_frames_iter.next();
                     }
                 }
 
@@ -112,8 +112,10 @@ impl Iterator for FrameOverlayIter<'_> {
                     &self.osd_options,
                 );
 
-                if let Some(srt_data) = &self.current_srt_frame.data {
-                    overlay_srt_data(&mut frame_image, srt_data, &self.srt_font, &self.srt_options);
+                if let Some(current_srt_frame) = &self.current_srt_frame {
+                    if let Some(srt_data) = &current_srt_frame.data {
+                        overlay_srt_data(&mut frame_image, srt_data, &self.srt_font, &self.srt_options);
+                    }
                 }
 
                 video_frame.data = frame_image.as_raw().to_vec();
