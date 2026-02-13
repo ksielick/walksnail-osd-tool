@@ -1,8 +1,4 @@
-use std::{
-    io::{self, Write},
-    path::PathBuf,
-    thread,
-};
+use std::{io::Write, path::PathBuf, thread};
 
 use crossbeam_channel::{Receiver, Sender};
 use ffmpeg_sidecar::{
@@ -11,7 +7,10 @@ use ffmpeg_sidecar::{
     event::{FfmpegEvent, LogLevel},
 };
 
-use super::{render_settings::RenderSettings, Encoder, FromFfmpegMessage, ToFfmpegMessage, VideoInfo};
+use super::{
+    error::FfmpegError, render_settings::RenderSettings, Encoder, FromFfmpegMessage, ToFfmpegMessage, UpscaleTarget,
+    VideoInfo,
+};
 use crate::{
     font,
     osd::{self, OsdOptions},
@@ -32,7 +31,7 @@ pub fn start_video_render(
     srt_options: &SrtOptions,
     video_info: &VideoInfo,
     render_settings: &RenderSettings,
-) -> Result<(Sender<ToFfmpegMessage>, Receiver<FromFfmpegMessage>), io::Error> {
+) -> Result<(Sender<ToFfmpegMessage>, Receiver<FromFfmpegMessage>), FfmpegError> {
     let mut decoder_process = spawn_decoder(ffmpeg_path, input_video)?;
 
     let mut encoder_process = spawn_encoder(
@@ -78,7 +77,9 @@ pub fn start_video_render(
         .spawn(move || {
             tracing::info_span!("Decoder handler thread").in_scope(|| {
                 frame_overlay_iter.for_each(|f| {
-                    encoder_stdin.write_all(&f.data).ok();
+                    if let Err(e) = encoder_stdin.write_all(&f.data) {
+                        tracing::error!("Failed to write to encoder stdin: {}", e);
+                    }
                 });
             });
         })
@@ -92,7 +93,9 @@ pub fn start_video_render(
                 encoder_process
                     .iter()
                     .expect("Failed to create encoder iterator")
-                    .for_each(|event| handle_encoder_events(event, &from_ffmpeg_tx));
+                    .for_each(|event| {
+                        handle_encoder_events(event, &from_ffmpeg_tx);
+                    });
             });
         })
         .expect("Failed to spawn encoder handler thread");
@@ -101,7 +104,7 @@ pub fn start_video_render(
 }
 
 #[tracing::instrument(skip(ffmpeg_path))]
-pub fn spawn_decoder(ffmpeg_path: &PathBuf, input_video: &PathBuf) -> Result<FfmpegChild, io::Error> {
+pub fn spawn_decoder(ffmpeg_path: &PathBuf, input_video: &PathBuf) -> Result<FfmpegChild, FfmpegError> {
     let decoder = FfmpegCommand::new_with_path(ffmpeg_path)
         .create_no_window()
         .input(input_video.to_str().unwrap())
@@ -119,8 +122,8 @@ pub fn spawn_encoder(
     bitrate_mbps: u32,
     video_encoder: &Encoder,
     output_video: &PathBuf,
-    upscale: bool,
-) -> Result<FfmpegChild, io::Error> {
+    upscale: UpscaleTarget,
+) -> Result<FfmpegChild, FfmpegError> {
     let mut encoder_command = FfmpegCommand::new_with_path(ffmpeg_path);
 
     encoder_command
@@ -131,8 +134,14 @@ pub fn spawn_encoder(
         .rate(frame_rate)
         .input("-");
 
-    if upscale {
-        encoder_command.args(["-vf", "scale=2560x1440:flags=bicubic"]);
+    match upscale {
+        UpscaleTarget::P1440 => {
+            encoder_command.args(["-vf", "scale=2560x1440:flags=bicubic"]);
+        }
+        UpscaleTarget::P2160 => {
+            encoder_command.args(["-vf", "scale=3840x2160:flags=bicubic"]);
+        }
+        UpscaleTarget::None => {}
     }
 
     encoder_command
@@ -147,20 +156,72 @@ pub fn spawn_encoder(
     Ok(encoder)
 }
 
+fn manual_parse_progress(log_line: &str) -> Option<ffmpeg_sidecar::event::FfmpegProgress> {
+    if !log_line.contains("frame=") || !log_line.contains("fps=") {
+        return None;
+    }
+
+    let frame = parse_val(log_line, "frame=")?.parse().ok()?;
+    let fps = parse_val(log_line, "fps=")?.parse().ok()?;
+    let speed = parse_val(log_line, "speed=")?.parse().ok()?;
+
+    Some(ffmpeg_sidecar::event::FfmpegProgress {
+        frame,
+        fps,
+        speed,
+        q: 0.0,
+        size_kb: parse_val(log_line, "size=").and_then(|s| s.parse().ok()).unwrap_or(0),
+        time: parse_val(log_line, "time=").unwrap_or_default(),
+        bitrate_kbps: parse_val(log_line, "bitrate=")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.0),
+        raw_log_message: log_line.to_string(),
+    })
+}
+
+fn parse_val(s: &str, key: &str) -> Option<String> {
+    let start = s.find(key)? + key.len();
+    let rest = &s[start..];
+    let mut result = String::new();
+    let mut found_content = false;
+    for c in rest.chars() {
+        if c.is_whitespace() {
+            if found_content {
+                break;
+            }
+            continue;
+        }
+        if c.is_digit(10) || c == '.' || c == '-' {
+            result.push(c);
+            found_content = true;
+        } else if found_content {
+            break;
+        }
+    }
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
 fn handle_encoder_events(ffmpeg_event: FfmpegEvent, ffmpeg_sender: &Sender<FromFfmpegMessage>) {
     match ffmpeg_event {
-        FfmpegEvent::Log(level, e) => {
-            if level == LogLevel::Fatal
-            // there are some fatal errors that ffmpeg considers normal errors
-            || e.contains("Error initializing output stream")
-            || e.contains("[error] Cannot load")
-            {
-                tracing::error!("ffmpeg fatal error: {}", &e);
+        FfmpegEvent::Progress(p) => {
+            ffmpeg_sender.send(FromFfmpegMessage::Progress(p)).unwrap();
+        }
+        FfmpegEvent::Log(_level, e) => {
+            if let Some(p) = manual_parse_progress(&e) {
+                ffmpeg_sender.send(FromFfmpegMessage::Progress(p)).ok();
+            }
+            if e.contains("Error initializing output stream") || e.contains("[error] Cannot load") {
+                tracing::info!("Sending EncoderFatalError message: {}", &e);
                 ffmpeg_sender.send(FromFfmpegMessage::EncoderFatalError(e)).unwrap();
             }
         }
         FfmpegEvent::LogEOF => {
             tracing::info!("ffmpeg encoder EOF reached");
+            tracing::info!("Sending EncoderFinished message");
             ffmpeg_sender.send(FromFfmpegMessage::EncoderFinished).unwrap();
         }
         _ => {}
@@ -172,15 +233,23 @@ pub fn handle_decoder_events(ffmpeg_event: FfmpegEvent, ffmpeg_sender: &Sender<F
         FfmpegEvent::Progress(p) => {
             ffmpeg_sender.send(FromFfmpegMessage::Progress(p)).unwrap();
         }
+        FfmpegEvent::Log(level, e) => {
+            if let Some(p) = manual_parse_progress(&e) {
+                ffmpeg_sender.send(FromFfmpegMessage::Progress(p)).ok();
+            }
+            match level {
+                LogLevel::Fatal => {
+                    tracing::error!("ffmpeg fatal error: {}", &e);
+                    ffmpeg_sender.send(FromFfmpegMessage::DecoderFatalError(e)).unwrap();
+                }
+                LogLevel::Warning | LogLevel::Error => {
+                    tracing::warn!("ffmpeg log: {}", e);
+                }
+                _ => {}
+            }
+        }
         FfmpegEvent::Done | FfmpegEvent::LogEOF => {
             ffmpeg_sender.send(FromFfmpegMessage::DecoderFinished).unwrap();
-        }
-        FfmpegEvent::Log(LogLevel::Fatal, e) => {
-            tracing::error!("ffmpeg fatal error: {}", &e);
-            ffmpeg_sender.send(FromFfmpegMessage::DecoderFatalError(e)).unwrap();
-        }
-        FfmpegEvent::Log(LogLevel::Warning | LogLevel::Error, e) => {
-            tracing::warn!("ffmpeg log: {}", e);
         }
         _ => {}
     }

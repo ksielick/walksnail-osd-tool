@@ -4,7 +4,7 @@ use derivative::Derivative;
 
 use super::{
     error::SrtFileError,
-    frame::{SrtDebugFrameData, SrtFrame},
+    frame::{AscentSrtFrameData, SrtDebugFrameData, SrtFrame},
     SrtFrameData,
 };
 
@@ -28,7 +28,11 @@ impl SrtFile {
             .iter()
             .map(|i| -> Result<SrtFrame, SrtFileError> {
                 let debug_data = i.text.parse::<SrtDebugFrameData>().ok();
-                let data = i.text.parse::<SrtFrameData>().ok();
+                let mut data = i.text.parse::<AscentSrtFrameData>().ok().map(|a| a.into());
+
+                if data.is_none() {
+                    data = i.text.parse::<SrtFrameData>().ok();
+                }
 
                 if debug_data.is_some() {
                     has_debug = true;

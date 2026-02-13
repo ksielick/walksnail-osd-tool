@@ -1,5 +1,6 @@
 use ffmpeg_sidecar::event::FfmpegProgress;
 
+#[derive(Debug)]
 pub enum FromFfmpegMessage {
     DecoderFatalError(String),
     EncoderFatalError(String),
@@ -8,6 +9,7 @@ pub enum FromFfmpegMessage {
     EncoderFinished,
 }
 
+#[derive(Debug)]
 pub enum ToFfmpegMessage {
     AbortRender,
 }

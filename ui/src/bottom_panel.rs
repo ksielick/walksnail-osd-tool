@@ -60,10 +60,10 @@ impl WalksnailOsdTool {
                             self.to_ffmpeg_sender = Some(to_ffmpeg_sender);
                             self.from_ffmpeg_receiver = Some(from_ffmpeg_receiver);
                         }
-                        Err(_) => {
+                        Err(e) => {
                             self.render_status.status = Status::Error {
                                 progress_pct: 0.0,
-                                error: "Failed to start video render".to_string(),
+                                error: format!("Failed to start video render: {}", e),
                             }
                         }
                     };

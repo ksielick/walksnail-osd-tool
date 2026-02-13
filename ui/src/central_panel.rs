@@ -210,6 +210,12 @@ impl WalksnailOsdTool {
                             changed |= ui
                                 .add_enabled(has_distance, Checkbox::new(&mut options.show_distance, "Distance"))
                                 .changed();
+                            changed |= ui.checkbox(&mut options.show_channel, "CH").changed();
+                            ui.end_row();
+
+                            changed |= ui.checkbox(&mut options.show_hz, "Hz").changed();
+                            changed |= ui.checkbox(&mut options.show_sp, "Sp").changed();
+                            changed |= ui.checkbox(&mut options.show_gp, "Gp").changed();
                             ui.end_row();
                         });
                         ui.end_row();
@@ -377,8 +383,29 @@ impl WalksnailOsdTool {
                         changed |= ui.add(Slider::new(&mut self.render_settings.bitrate_mbps, 0..=160).text("Mbps")).changed();
                         ui.end_row();
 
-                        ui.label("Upscale to 1440p").on_hover_text(tooltip_text("Upscale the output video to 1440p to get better quality after uplaoding to YouTube."));
-                        changed |= ui.add(Checkbox::without_text(&mut self.render_settings.upscale)).changed();
+                        ui.label("Upscale").on_hover_text(tooltip_text("Upscale the output video to get better quality after uploading to YouTube."));
+                        let upscale_targets = [
+                            backend::ffmpeg::UpscaleTarget::None,
+                            backend::ffmpeg::UpscaleTarget::P1440,
+                            backend::ffmpeg::UpscaleTarget::P2160,
+                        ];
+                        let mut selected_upscale_idx = match self.render_settings.upscale {
+                            backend::ffmpeg::UpscaleTarget::None => 0,
+                            backend::ffmpeg::UpscaleTarget::P1440 => 1,
+                            backend::ffmpeg::UpscaleTarget::P2160 => 2,
+                        };
+                        let upscale_selection = egui::ComboBox::from_id_source("upscale")
+                            .width(100.0)
+                            .show_index(
+                                ui,
+                                &mut selected_upscale_idx,
+                                upscale_targets.len(),
+                                |i| upscale_targets[i].to_string(),
+                            );
+                        if upscale_selection.changed() {
+                            self.render_settings.upscale = upscale_targets[selected_upscale_idx];
+                            changed |= true;
+                        }
                         ui.end_row();
 
                         ui.label("Chroma key").on_hover_text(tooltip_text("Render the video with a chroma key instead of the input video so the OSD can be overlay in video editing software."));
