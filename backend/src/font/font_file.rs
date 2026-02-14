@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use derivative::Derivative;
-use image::{imageops::FilterType, io::Reader, DynamicImage, GenericImageView, ImageBuffer, Rgba, RgbaImage};
+use image::{io::Reader, DynamicImage, GenericImageView, ImageBuffer, Rgba, RgbaImage};
 
 use super::{
     dimensions::{detect_dimensions, CharacterSize, FontType},
@@ -37,14 +37,24 @@ impl FontFile {
         })
     }
 
-    pub fn get_character(&self, index: usize, size: &CharacterSize) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
-        self.characters.get(index).map(|original_image| {
-            if size.width() != self.character_size.width() || size.height() != self.character_size.height() {
-                image::imageops::resize(original_image, size.width(), size.height(), FilterType::Lanczos3)
-            } else {
-                original_image.clone()
-            }
+    pub fn from_bytes(name: &str, bytes: &[u8]) -> Result<Self, FontFileError> {
+        let font_image = image::load_from_memory(bytes)?;
+        let (width, height) = font_image.dimensions();
+        let (character_size, font_type, character_count) = detect_dimensions(width, height)?;
+
+        let characters = split_characters(&font_image, &character_size, &font_type, character_count);
+
+        Ok(Self {
+            file_path: PathBuf::from(name),
+            character_count,
+            character_size,
+            font_type,
+            characters,
         })
+    }
+
+    pub fn get_character(&self, index: usize) -> Option<&RgbaImage> {
+        self.characters.get(index)
     }
 }
 

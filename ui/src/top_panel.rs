@@ -1,4 +1,4 @@
-use egui::{vec2, Align2, Button, Frame, Label, RichText, Sense, Ui, Visuals, Window};
+use egui::{vec2, Align2, Button, Frame, Label, RichText, Sense, Ui, ViewportCommand, Visuals, Window};
 
 use super::WalksnailOsdTool;
 
@@ -31,11 +31,13 @@ impl WalksnailOsdTool {
                 tracing::info!("Opened files {:?}", file_handles);
                 self.import_video_file(&file_handles);
                 self.import_osd_file(&file_handles);
+                self.auto_select_bundled_font();
                 self.import_font_file(&file_handles);
                 self.import_srt_file(&file_handles);
 
                 self.auto_center_horizontal();
                 self.update_osd_preview(ctx);
+                self.auto_resize_window(ctx);
                 self.render_status.reset();
             }
         }
@@ -52,10 +54,12 @@ impl WalksnailOsdTool {
             tracing::info!("Dropped files {:?}", file_handles);
             self.import_video_file(&file_handles);
             self.import_osd_file(&file_handles);
+            self.auto_select_bundled_font();
             self.import_font_file(&file_handles);
             self.import_srt_file(&file_handles);
             self.auto_center_horizontal();
             self.update_osd_preview(ctx);
+            self.auto_resize_window(ctx);
             self.render_status.reset();
         }
     }
@@ -74,6 +78,56 @@ impl WalksnailOsdTool {
             self.osd_preview.preview_frame = 1;
             self.render_status.reset();
             tracing::info!("Reset files");
+        }
+    }
+
+    fn auto_select_bundled_font(&mut self) {
+        if let (Some(video_info), Some(osd_file)) = (&self.video_info, &self.osd_file) {
+            let character_size = backend::overlay::get_character_size(video_info.width, video_info.height);
+
+            // Only auto-select if no font loaded, or the current font is a bundled one
+            // (i.e., user hasn't manually picked a .png font)
+            let should_auto_select = match &self.font_file {
+                None => true,
+                Some(f) => f.file_path.to_string_lossy().contains("(bundled)"),
+            };
+
+            if should_auto_select {
+                if let Some(font) = backend::font::bundled_fonts::get_bundled_font(
+                    &osd_file.fc_firmware,
+                    &character_size,
+                ) {
+                    tracing::info!(
+                        "Auto-selected bundled font: {:?} for firmware {:?}, resolution {:?}",
+                        font.file_path, osd_file.fc_firmware, character_size
+                    );
+                    self.font_file = Some(font);
+                }
+            }
+        }
+    }
+
+    fn auto_resize_window(&self, ctx: &egui::Context) {
+        if let Some(video_info) = &self.video_info {
+            // Side panel width + padding
+            let side_panel_width = 285.0_f32;
+            // Desired preview width in the central panel
+            let preview_width = 700.0_f32;
+            let total_width = side_panel_width + preview_width;
+
+            // Calculate preview height based on video aspect ratio
+            let aspect_ratio = video_info.width as f32 / video_info.height as f32;
+            let preview_height = (preview_width - 20.0) / aspect_ratio;
+
+            // Add space for OSD options, SRT options, rendering options, top/bottom panels, and margins
+            let ui_chrome_height = 600.0_f32;
+            let total_height = (preview_height + ui_chrome_height).min(1200.0);
+
+            // Clamp to reasonable bounds
+            let width = total_width.clamp(800.0, 1600.0);
+            let height = total_height.clamp(600.0, 1200.0);
+
+            ctx.send_viewport_cmd(ViewportCommand::InnerSize(vec2(width, height)));
         }
     }
 

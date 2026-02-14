@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-02-14
+
+### Added
+
+- Bundled OSD fonts for Betaflight, INAV, and ArduPilot (720p and 1080p). The correct font is automatically selected based on the video resolution and OSD firmware type.
+- Auto-select first available H.264 hardware encoder on startup.
+- Hardware-accelerated video decoding (`-hwaccel auto`) when a hardware encoder is selected.
+- Auto-resize application window after loading files.
+
+### Changed
+
+- OSD rendering performance improved ~2x via glyph caching (each glyph is resized only once instead of every frame).
+- `FontFile::get_character` now returns a reference instead of cloning the image.
+
 ## [0.4.3] - 2026-02-13
 
 ### Added

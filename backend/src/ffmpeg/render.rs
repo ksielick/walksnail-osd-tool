@@ -32,7 +32,7 @@ pub fn start_video_render(
     video_info: &VideoInfo,
     render_settings: &RenderSettings,
 ) -> Result<(Sender<ToFfmpegMessage>, Receiver<FromFfmpegMessage>), FfmpegError> {
-    let mut decoder_process = spawn_decoder(ffmpeg_path, input_video)?;
+    let mut decoder_process = spawn_decoder(ffmpeg_path, input_video, render_settings.encoder.hardware)?;
 
     let mut encoder_process = spawn_encoder(
         ffmpeg_path,
@@ -106,12 +106,15 @@ pub fn start_video_render(
 }
 
 #[tracing::instrument(skip(ffmpeg_path))]
-pub fn spawn_decoder(ffmpeg_path: &PathBuf, input_video: &PathBuf) -> Result<FfmpegChild, FfmpegError> {
-    let decoder = FfmpegCommand::new_with_path(ffmpeg_path)
-        .create_no_window()
-        .input(input_video.to_str().unwrap())
-        .args(["-f", "rawvideo", "-pix_fmt", "rgba", "-"])
-        .spawn()?;
+pub fn spawn_decoder(ffmpeg_path: &PathBuf, input_video: &PathBuf, use_hwaccel: bool) -> Result<FfmpegChild, FfmpegError> {
+    let mut cmd = FfmpegCommand::new_with_path(ffmpeg_path);
+    cmd.create_no_window();
+    if use_hwaccel {
+        cmd.args(["-hwaccel", "auto"]);
+    }
+    cmd.input(input_video.to_str().unwrap())
+        .args(["-f", "rawvideo", "-pix_fmt", "rgba", "-"]);
+    let decoder = cmd.spawn()?;
     Ok(decoder)
 }
 

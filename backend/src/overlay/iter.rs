@@ -1,4 +1,4 @@
-use std::{iter::Peekable, vec::IntoIter};
+use std::{collections::HashMap, iter::Peekable, vec::IntoIter};
 
 use crossbeam_channel::{Receiver, Sender};
 use ffmpeg_sidecar::{
@@ -8,7 +8,7 @@ use ffmpeg_sidecar::{
 };
 use image::{Rgba, RgbaImage};
 
-use super::{overlay_osd, overlay_srt_data};
+use super::{overlay_osd_cached, overlay_srt_data};
 use crate::{
     ffmpeg::{handle_decoder_events, FromFfmpegMessage, ToFfmpegMessage},
     font,
@@ -31,6 +31,7 @@ pub struct FrameOverlayIter<'a> {
     ffmpeg_receiver: Receiver<ToFfmpegMessage>,
     chroma_key: Option<Rgba<u8>>,
     pad_4_3_to_16_9: bool,
+    glyph_cache: HashMap<u16, RgbaImage>,
 }
 
 impl<'a> FrameOverlayIter<'a> {
@@ -70,6 +71,7 @@ impl<'a> FrameOverlayIter<'a> {
             ffmpeg_receiver,
             chroma_key,
             pad_4_3_to_16_9,
+            glyph_cache: HashMap::new(),
         }
     }
 }
@@ -120,12 +122,13 @@ impl Iterator for FrameOverlayIter<'_> {
                     video_frame.width = final_width;
                 }
 
-                overlay_osd(
+                overlay_osd_cached(
                     &mut frame_image,
                     &self.current_osd_frame,
                     &self.font_file,
                     &self.osd_options,
                     (x_offset as i32, 0),
+                    &mut self.glyph_cache,
                 );
 
                 if let Some(current_srt_frame) = &self.current_srt_frame {

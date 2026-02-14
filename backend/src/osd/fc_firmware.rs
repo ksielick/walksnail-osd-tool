@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use super::error::OsdFileError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FcFirmware {
     Betaflight,
     Inav,

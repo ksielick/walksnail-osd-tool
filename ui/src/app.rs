@@ -83,6 +83,24 @@ impl WalksnailOsdTool {
             ..Default::default()
         };
 
+        // Auto-select first detected H.264 hardware encoder, falling back to default (libx264)
+        let render_settings = {
+            let mut settings = RenderSettings::default();
+            // Find first detected H.264 hardware encoder
+            if let Some(hw_encoder) = encoders.iter().find(|e| {
+                e.hardware && e.detected && e.codec == backend::ffmpeg::Codec::H264
+            }) {
+                settings.encoder = hw_encoder.clone();
+                // Compute the index within the detected-only list (matching the UI ComboBox filter)
+                settings.selected_encoder_idx = encoders
+                    .iter()
+                    .filter(|e| e.detected)
+                    .position(|e| e == hw_encoder)
+                    .unwrap_or(0);
+            }
+            settings
+        };
+
         Self {
             dependencies: Dependencies {
                 dependencies_satisfied,
@@ -94,6 +112,7 @@ impl WalksnailOsdTool {
             osd_options,
             srt_options,
             font_file,
+            render_settings,
             app_update,
             app_version,
             target,

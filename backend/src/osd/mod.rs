@@ -5,6 +5,7 @@ mod glyph;
 mod options;
 mod osd_file;
 
+pub use fc_firmware::FcFirmware;
 pub use frame::Frame;
 pub use options::OsdOptions;
 pub use osd_file::OsdFile;
