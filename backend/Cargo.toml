@@ -1,6 +1,6 @@
 [package]
 name = "backend"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 
 [dependencies]
@@ -9,10 +9,13 @@ crossbeam-channel = "0.5.7"
 derivative = "2.2.0"
 ffmpeg-sidecar = "0.3.3"
 ffprobe = { git = "https://github.com/avsaase/ffprobe-rs/", branch = "suppress-console-windows" }
+hex = "0.4"
 image = "0.24.5"
+lazy_static = "1.4"
 imageproc = "0.23.0"
 parse-display = "0.8.0"
 rayon = "1.6.1"
+regex = "1"
 rusttype = "0.9.3"
 serde = { version = "1.0.159", features = ["derive"] }
 srtparse = "0.2.0"

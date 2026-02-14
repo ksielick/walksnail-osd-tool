@@ -1,3 +1,4 @@
+pub mod artlynk;
 mod error;
 mod fc_firmware;
 mod frame;
@@ -5,6 +6,7 @@ mod glyph;
 mod options;
 mod osd_file;
 
+pub use error::OsdFileError;
 pub use fc_firmware::FcFirmware;
 pub use frame::Frame;
 pub use options::OsdOptions;

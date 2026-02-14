@@ -10,45 +10,59 @@ pub struct SrtFrame {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SrtFrameData {
-    pub signal: u8,
-    pub channel: String,
-    pub flight_time: u32,
-    pub sky_bat: f32,
-    pub ground_bat: f32,
-    pub latency: u32,
-    pub bitrate_mbps: f32,
-    pub distance: u32,
+    pub signal: Option<u8>,
+    pub channel: Option<String>,
+    pub flight_time: Option<u32>,
+    pub sky_bat: Option<f32>,
+    pub ground_bat: Option<f32>,
+    pub latency: Option<u32>,
+    pub bitrate_mbps: Option<f32>,
+    pub distance: Option<u32>,
     pub hz: Option<u32>,
     pub sp: Option<u8>,
     pub gp: Option<u8>,
+    pub air_temp: Option<u32>,
+    pub gnd_temp: Option<u32>,
+    pub sty_mode: Option<u32>,
 }
 
 impl std::str::FromStr for SrtFrameData {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut signal = 0;
-        let mut channel = String::new();
-        let mut flight_time = 0;
-        let mut sky_bat = 0.0;
-        let mut ground_bat = 0.0;
-        let mut latency = 0;
-        let mut bitrate_mbps = 0.0;
-        let mut distance = 0;
+        let mut signal = None;
+        let mut channel = None;
+        let mut flight_time = None;
+        let mut sky_bat = None;
+        let mut ground_bat = None;
+        let mut latency = None;
+        let mut bitrate_mbps = None;
+        let mut distance = None;
+        let mut air_temp = None;
+        let mut gnd_temp = None;
+        let mut sty_mode = None;
 
-        for part in s.split_whitespace() {
-            if let Some((key, value)) = part.split_once(':') {
-                match key {
-                    "Signal" => signal = value.parse().unwrap_or(0),
-                    "CH" => channel = value.to_string(),
-                    "FlightTime" => flight_time = value.parse().unwrap_or(0),
-                    "SBat" => sky_bat = value.trim_end_matches('V').parse().unwrap_or(0.0),
-                    "GBat" => ground_bat = value.trim_end_matches('V').parse().unwrap_or(0.0),
-                    "Delay" => latency = value.trim_end_matches("ms").parse().unwrap_or(0),
-                    "Bitrate" => bitrate_mbps = value.trim_end_matches("Mbps").parse().unwrap_or(0.0),
-                    "Distance" => distance = value.trim_end_matches('m').parse().unwrap_or(0),
-                    _ => {}
-                }
+        lazy_static::lazy_static! {
+            static ref RE: regex::Regex = regex::Regex::new(r"(\w+):\s*([^:\s]+)").unwrap();
+        }
+
+        for cap in RE.captures_iter(s) {
+            let key = &cap[1];
+            let value = &cap[2];
+
+            match key {
+                "Signal" | "MCS" => signal = value.parse().ok(),
+                "CH" => channel = Some(value.to_string()),
+                "FlightTime" => flight_time = value.parse().ok(),
+                "SBat" => sky_bat = value.trim_end_matches('V').parse().ok(),
+                "GBat" => ground_bat = value.trim_end_matches('V').parse().ok(),
+                "Delay" => latency = value.trim_end_matches("ms").parse().ok(),
+                "Bitrate" => bitrate_mbps = value.trim_end_matches("Mbps").parse().ok(),
+                "Distance" => distance = value.trim_end_matches('m').parse().ok(),
+                "AirTemp" => air_temp = value.parse().ok(),
+                "GndTemp" => gnd_temp = value.parse().ok(),
+                "STYMode" => sty_mode = value.parse().ok(),
+                _ => {}
             }
         }
 
@@ -64,6 +78,9 @@ impl std::str::FromStr for SrtFrameData {
             hz: None,
             sp: None,
             gp: None,
+            air_temp,
+            gnd_temp,
+            sty_mode,
         })
     }
 }
@@ -87,17 +104,20 @@ pub struct AscentSrtFrameData {
 impl From<AscentSrtFrameData> for SrtFrameData {
     fn from(ascent_data: AscentSrtFrameData) -> Self {
         Self {
-            signal: ascent_data.signal,
-            channel: ascent_data.channel,
-            flight_time: ascent_data.flight_time,
-            sky_bat: ascent_data.sky_bat,
-            ground_bat: ascent_data.ground_bat,
-            latency: ascent_data.latency,
-            bitrate_mbps: ascent_data.bitrate_mbps,
-            distance: ascent_data.distance,
+            signal: Some(ascent_data.signal),
+            channel: Some(ascent_data.channel),
+            flight_time: Some(ascent_data.flight_time),
+            sky_bat: Some(ascent_data.sky_bat),
+            ground_bat: Some(ascent_data.ground_bat),
+            latency: Some(ascent_data.latency),
+            bitrate_mbps: Some(ascent_data.bitrate_mbps),
+            distance: Some(ascent_data.distance),
             hz: Some(ascent_data.hz),
             sp: Some(ascent_data.sp),
             gp: Some(ascent_data.gp),
+            air_temp: None,
+            gnd_temp: None,
+            sty_mode: None,
         }
     }
 }
@@ -151,17 +171,20 @@ mod tests {
         assert_eq!(
             parsed.expect("Failed to parse SRT frame data"),
             SrtFrameData {
-                signal: 4,
-                channel: "8".to_string(),
-                flight_time: 0,
-                sky_bat: 4.7,
-                ground_bat: 7.2,
-                latency: 32,
-                bitrate_mbps: 25.0,
-                distance: 7,
+                signal: Some(4),
+                channel: Some("8".to_string()),
+                flight_time: Some(0),
+                sky_bat: Some(4.7),
+                ground_bat: Some(7.2),
+                latency: Some(32),
+                bitrate_mbps: Some(25.0),
+                distance: Some(7),
                 hz: None,
                 sp: None,
                 gp: None,
+                air_temp: None,
+                gnd_temp: None,
+                sty_mode: None,
             }
         )
     }
@@ -173,17 +196,20 @@ mod tests {
         assert_eq!(
             parsed.expect("Failed to parse SRT frame data"),
             SrtFrameData {
-                signal: 4,
-                channel: "7".to_string(),
-                flight_time: 0,
-                sky_bat: 16.7,
-                ground_bat: 12.5,
-                latency: 25,
-                bitrate_mbps: 25.0,
-                distance: 1,
+                signal: Some(4),
+                channel: Some("7".to_string()),
+                flight_time: Some(0),
+                sky_bat: Some(16.7),
+                ground_bat: Some(12.5),
+                latency: Some(25),
+                bitrate_mbps: Some(25.0),
+                distance: Some(1),
                 hz: None,
                 sp: None,
                 gp: None,
+                air_temp: None,
+                gnd_temp: None,
+                sty_mode: None,
             }
         )
     }
@@ -250,6 +276,31 @@ mod tests {
                 latency: 37,
                 bitrate_mbps: 25.0,
                 distance: 0
+            }
+        )
+    }
+
+    #[test]
+    fn parse_artlynk_srt_frame_data() {
+        let line = "Signal:4 CH: 3 FlightTime:   0 SBat:7.11 GBat:7.54 Bitrate: 4Mbps Distance:     0m STYMode:1 AirTemp: 49 GndTemp: 34";
+        let parsed = line.parse::<SrtFrameData>();
+        assert_eq!(
+            parsed.expect("Failed to parse Artlynk SRT frame data"),
+            SrtFrameData {
+                signal: Some(4),
+                channel: Some("3".to_string()),
+                flight_time: Some(0),
+                sky_bat: Some(7.11),
+                ground_bat: Some(7.54),
+                latency: None,
+                bitrate_mbps: Some(4.0),
+                distance: Some(0),
+                hz: None,
+                sp: None,
+                gp: None,
+                air_temp: Some(49),
+                gnd_temp: Some(34),
+                sty_mode: Some(1),
             }
         )
     }

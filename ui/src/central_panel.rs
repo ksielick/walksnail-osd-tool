@@ -40,6 +40,13 @@ impl WalksnailOsdTool {
         CollapsingHeader::new(RichText::new("OSD Options").heading())
             .default_open(true)
             .show_unindented(ui, |ui| {
+                if self.artlynk_extraction_promise.is_some() {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(RichText::new("Scanning for OSD data...").color(Color32::DEBUG_COLOR));
+                    });
+                    ui.add_space(5.0);
+                }
                 Grid::new("osd_options")
                     .min_col_width(self.ui_dimensions.options_column1_width)
                     .show(ui, |ui| {
@@ -198,7 +205,7 @@ impl WalksnailOsdTool {
                                 .changed();
 
                             if ui.button("Reset").clicked() {
-                                self.srt_options.scale = 35.0;
+                                self.srt_options.scale = 34.0;
                                 changed |= true;
                             }
                         });
@@ -208,26 +215,37 @@ impl WalksnailOsdTool {
                             "Select data from the SRT file to be rendered on the video.",
                         ));
                         let options = &mut self.srt_options;
-                        let has_distance = self.srt_file.as_ref().map(|s| s.has_distance).unwrap_or(true);
-                        Grid::new("srt_selection").show(ui, |ui| {
-                            changed |= ui.checkbox(&mut options.show_time, "Time").changed();
-                            changed |= ui.checkbox(&mut options.show_sbat, "SBat").changed();
-                            changed |= ui.checkbox(&mut options.show_gbat, "GBat").changed();
-                            changed |= ui.checkbox(&mut options.show_signal, "Signal").changed();
-                            ui.end_row();
+                        let srt_file = self.srt_file.as_ref();
+                        let has_time = srt_file.map(|s| s.has_flight_time).unwrap_or(true);
+                        let has_sbat = srt_file.map(|s| s.has_sky_bat).unwrap_or(true);
+                        let has_gbat = srt_file.map(|s| s.has_ground_bat).unwrap_or(true);
+                        let has_signal = srt_file.map(|s| s.has_signal).unwrap_or(true);
+                        let has_latency = srt_file.map(|s| s.has_latency).unwrap_or(true);
+                        let has_bitrate = srt_file.map(|s| s.has_bitrate).unwrap_or(true);
+                        let has_distance = srt_file.map(|s| s.has_distance).unwrap_or(true);
+                        let has_channel = srt_file.map(|s| s.has_channel).unwrap_or(true);
+                        let has_hz = srt_file.map(|s| s.has_hz).unwrap_or(false);
+                        let has_sp = srt_file.map(|s| s.has_sp).unwrap_or(false);
+                        let has_gp = srt_file.map(|s| s.has_gp).unwrap_or(false);
+                        let has_air_temp = srt_file.map(|s| s.has_air_temp).unwrap_or(false);
+                        let has_gnd_temp = srt_file.map(|s| s.has_gnd_temp).unwrap_or(false);
+                        let has_sty_mode = srt_file.map(|s| s.has_sty_mode).unwrap_or(false);
 
-                            changed |= ui.checkbox(&mut options.show_latency, "Latency").changed();
-                            changed |= ui.checkbox(&mut options.show_bitrate, "Bitrate").changed();
-                            changed |= ui
-                                .add_enabled(has_distance, Checkbox::new(&mut options.show_distance, "Distance"))
-                                .changed();
-                            changed |= ui.checkbox(&mut options.show_channel, "CH").changed();
-                            ui.end_row();
-
-                            changed |= ui.checkbox(&mut options.show_hz, "Hz").changed();
-                            changed |= ui.checkbox(&mut options.show_sp, "Sp").changed();
-                            changed |= ui.checkbox(&mut options.show_gp, "Gp").changed();
-                            ui.end_row();
+                        ui.horizontal_wrapped(|ui| {
+                            if has_time { changed |= ui.checkbox(&mut options.show_time, "FlightTime").changed(); }
+                            if has_sbat { changed |= ui.checkbox(&mut options.show_sbat, "SBat").changed(); }
+                            if has_gbat { changed |= ui.checkbox(&mut options.show_gbat, "GBat").changed(); }
+                            if has_signal { changed |= ui.checkbox(&mut options.show_signal, "Signal").changed(); }
+                            if has_latency { changed |= ui.checkbox(&mut options.show_latency, "Latency").changed(); }
+                            if has_bitrate { changed |= ui.checkbox(&mut options.show_bitrate, "Bitrate").changed(); }
+                            if has_distance { changed |= ui.checkbox(&mut options.show_distance, "Distance").changed(); }
+                            if has_channel { changed |= ui.checkbox(&mut options.show_channel, "CH").changed(); }
+                            if has_hz { changed |= ui.checkbox(&mut options.show_hz, "Hz").changed(); }
+                            if has_sp { changed |= ui.checkbox(&mut options.show_sp, "Sp").changed(); }
+                            if has_gp { changed |= ui.checkbox(&mut options.show_gp, "Gp").changed(); }
+                            if has_air_temp { changed |= ui.checkbox(&mut options.show_air_temp, "AirTemp").changed(); }
+                            if has_gnd_temp { changed |= ui.checkbox(&mut options.show_gnd_temp, "GndTemp").changed(); }
+                            if has_sty_mode { changed |= ui.checkbox(&mut options.show_sty_mode, "STYMode").changed(); }
                         });
                         ui.end_row();
                     });

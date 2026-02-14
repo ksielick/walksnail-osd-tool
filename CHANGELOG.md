@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-02-14
+
+### Added
+
+- Support for direct OSD data extraction from Artlynk MP4 recordings (SEI User Data messages).
+- Background OSD extraction with visual "Scanning for OSD data..." indicator to prevent UI freezing.
+- Optimized Artlynk OSD detection (fast 2s check) to avoid long scans on non-Artlynk videos.
+- Support for Artlynk SRT telemetry fields: `AirTemp`, `GndTemp`, and `STYMode`.
+- Context-aware default SRT settings for Avatar, Ascent, and Artlynk files.
+
+### Changed
+
+- Rearranged SRT telemetry checkboxes into a compact, wrapped horizontal layout.
+- Preview window now automatically refreshes (font selection and centering) after background OSD extraction finishes.
+
 ## [0.4.4] - 2026-02-14
 
 ### Added

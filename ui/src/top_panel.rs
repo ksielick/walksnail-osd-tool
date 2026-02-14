@@ -81,7 +81,7 @@ impl WalksnailOsdTool {
         }
     }
 
-    fn auto_select_bundled_font(&mut self) {
+    pub(crate) fn auto_select_bundled_font(&mut self) {
         if let (Some(video_info), Some(osd_file)) = (&self.video_info, &self.osd_file) {
             let character_size = backend::overlay::get_character_size(video_info.width, video_info.height);
 
@@ -107,7 +107,7 @@ impl WalksnailOsdTool {
         }
     }
 
-    fn auto_resize_window(&self, ctx: &egui::Context) {
+    pub(crate) fn auto_resize_window(&self, ctx: &egui::Context) {
         if let Some(video_info) = &self.video_info {
             // Side panel width + padding
             let side_panel_width = 285.0_f32;

@@ -9,7 +9,7 @@ const HEADER_BYTES: usize = 40;
 const FC_TYPE_BYTES: usize = 4;
 const FRAME_BYTES: usize = 2124;
 
-#[derive(Derivative)]
+#[derive(Derivative, Clone)]
 #[derivative(Debug)]
 pub struct OsdFile {
     pub file_path: PathBuf,

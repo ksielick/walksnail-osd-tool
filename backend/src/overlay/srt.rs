@@ -14,25 +14,35 @@ pub fn overlay_srt_data(
     let mut segments = Vec::new();
 
     if srt_options.show_time {
-        let minutes = srt_data.flight_time / 60;
-        let seconds = srt_data.flight_time % 60;
-        segments.push(format!("Time:{}:{:0>2}", minutes, seconds));
+        if let Some(flight_time) = srt_data.flight_time {
+            let minutes = flight_time / 60;
+            let seconds = flight_time % 60;
+            segments.push(format!("Time:{}:{:0>2}", minutes, seconds));
+        }
     }
 
     if srt_options.show_sbat {
-        segments.push(format!("SBat:{: >4.1}V", srt_data.sky_bat));
+        if let Some(sky_bat) = srt_data.sky_bat {
+            segments.push(format!("SBat:{: >4.1}V", sky_bat));
+        }
     }
 
     if srt_options.show_gbat {
-        segments.push(format!("GBat:{: >4.1}V", srt_data.ground_bat));
+        if let Some(ground_bat) = srt_data.ground_bat {
+            segments.push(format!("GBat:{: >4.1}V", ground_bat));
+        }
     }
 
     if srt_options.show_signal {
-        segments.push(format!("Signal:{}", srt_data.signal));
+        if let Some(signal) = srt_data.signal {
+            segments.push(format!("Signal:{}", signal));
+        }
     }
 
     if srt_options.show_channel {
-        segments.push(format!("CH:{}", srt_data.channel));
+        if let Some(channel) = &srt_data.channel {
+            segments.push(format!("CH:{}", channel));
+        }
     }
 
     if srt_options.show_hz {
@@ -53,21 +63,44 @@ pub fn overlay_srt_data(
         }
     }
 
+    if srt_options.show_air_temp {
+        if let Some(temp) = srt_data.air_temp {
+            segments.push(format!("AirTemp:{}", temp));
+        }
+    }
+
+    if srt_options.show_gnd_temp {
+        if let Some(temp) = srt_data.gnd_temp {
+            segments.push(format!("GndTemp:{}", temp));
+        }
+    }
+
+    if srt_options.show_sty_mode {
+        if let Some(mode) = srt_data.sty_mode {
+            segments.push(format!("STYMode:{}", mode));
+        }
+    }
+
     if srt_options.show_latency {
-        segments.push(format!("Latency:{: >3}ms", srt_data.latency));
+        if let Some(latency) = srt_data.latency {
+            segments.push(format!("Latency:{: >3}ms", latency));
+        }
     }
 
     if srt_options.show_bitrate {
-        segments.push(format!("Bitrate:{: >4.1}Mbps", srt_data.bitrate_mbps));
+        if let Some(bitrate_mbps) = srt_data.bitrate_mbps {
+            segments.push(format!("Bitrate:{: >4.1}Mbps", bitrate_mbps));
+        }
     }
 
     if srt_options.show_distance {
-        let distance = srt_data.distance;
-        if distance > 999 {
-            let km = distance as f32 / 1000.0;
-            segments.push(format!("Distance:{:.2}km", km));
-        } else {
-            segments.push(format!("Distance:{: >3}m", srt_data.distance));
+        if let Some(distance) = srt_data.distance {
+            if distance > 999 {
+                let km = distance as f32 / 1000.0;
+                segments.push(format!("Distance:{:.2}km", km));
+            } else {
+                segments.push(format!("Distance:{: >3}m", distance));
+            }
         }
     }
 

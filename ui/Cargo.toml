@@ -1,8 +1,8 @@
 [package]
 name = "walksnail-osd-tool"
-version = "0.4.4"
+version = "0.4.5"
 edition = "2021"
-description = "Cross-platform tool for rendering the flight controller OSD and SRT data from the Walksnail Avatar HD FPV system on top of the goggle or VRX recording."
+description = "Cross-platform tool for rendering the flight controller OSD and SRT data from the Walksnail Avatar, Ascent, and BetaFPV Artlynk HD FPV systems from goggle or VRX recording."
 authors = ["Alexander van Saase"]
 keywords = ["Walksnail Avatar", "FPV", "Video"]
 repository = "https://github.com/ksielick/walksnail-osd-tool"

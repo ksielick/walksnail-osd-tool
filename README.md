@@ -7,7 +7,7 @@
 [![Latest build](https://img.shields.io/github/last-commit/ksielick/walksnail-osd-tool/master?label=latest%20build)](https://nightly.link/ksielick/walksnail-osd-tool/workflows/release.yaml/master/walksnail-osd-tool-all-platforms.zip)
 [![Totally awesome](https://img.shields.io/badge/totally%20awesome-true-blue)](https://github.com/ksielick/walksnail-osd-tool)
 
-Cross-platform tool for rendering the flight controller OSD and SRT data from the Walksnail Avatar HD FPV system on top of the goggle or VRX recording.
+Cross-platform tool for rendering the flight controller OSD and SRT data from the Walksnail Avatar, Ascent, and BetaFPV Artlynk HD FPV systems from goggle or VRX recording. Supports both standard `.osd` files and direct extraction from MP4 recordings with embedded OSD data (Artlynk).
 
 ![image](https://user-images.githubusercontent.com/880421/228286034-ffd7bf0d-4bb0-4774-9ee1-dd408bd97a88.png)
 

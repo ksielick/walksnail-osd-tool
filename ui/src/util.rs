@@ -4,9 +4,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use backend::{config::AppConfig, ffmpeg::VideoInfo, font::FontFile, osd::OsdFile, srt::SrtFile};
+use backend::{config::AppConfig, ffmpeg::VideoInfo, font::FontFile, osd::OsdFile, srt::{SrtFile, SrtOptions}};
 use egui::{FontFamily, FontId, Margin, RichText, Separator, TextStyle, Ui};
 use github_release_check::{GitHubReleaseItem, LookupError};
+use poll_promise::Promise;
 use semver::Version;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{filter, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer};
@@ -47,6 +48,19 @@ impl WalksnailOsdTool {
             // Try to load the matching OSD and SRT files
             self.import_osd_file(&[matching_file_with_extension(video_file, "osd")]);
             self.import_srt_file(&[matching_file_with_extension(video_file, "srt")]);
+
+            // If no .osd file was loaded, try Artlynk extraction from video SEI data
+            if self.osd_file.is_none() {
+                let ffmpeg_path = self.dependencies.ffmpeg_path.clone();
+                let video_path = video_file.clone();
+
+                self.artlynk_extraction_promise = Some(Promise::spawn_thread("Artlynk extraction", move || {
+                    backend::osd::artlynk::extract_osd_from_video(
+                        &ffmpeg_path,
+                        &video_path,
+                    )
+                }));
+            }
         }
     }
 
@@ -58,8 +72,18 @@ impl WalksnailOsdTool {
     }
 
     pub fn import_srt_file(&mut self, file_handles: &[PathBuf]) {
-        if let Some(str_file_path) = filter_file_with_extention(file_handles, "srt") {
-            self.srt_file = SrtFile::open(str_file_path.clone()).ok();
+        if let Some(srt_file_path) = filter_file_with_extention(file_handles, "srt") {
+            self.srt_file = SrtFile::open(srt_file_path.clone()).ok();
+
+            let file_name = srt_file_path.file_name().map(|f| f.to_string_lossy().to_lowercase()).unwrap_or_default();
+            if file_name.starts_with("avatar") || file_name.starts_with("ascent") {
+                tracing::info!("Applying Avatar/Ascent SRT defaults");
+                self.srt_options = SrtOptions::walksnail_optimized();
+            } else {
+                tracing::info!("Applying Artlynk/Default SRT defaults");
+                self.srt_options = SrtOptions::default();
+            }
+
             self.srt_options.show_distance &= self.srt_file.as_ref().map(|s| s.has_distance).unwrap_or(true);
             self.config_changed = Some(Instant::now());
         }

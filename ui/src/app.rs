@@ -7,7 +7,7 @@ use backend::{
     config::AppConfig,
     ffmpeg::{Encoder, FromFfmpegMessage, RenderSettings, ToFfmpegMessage, VideoInfo},
     font::{self, FontFile},
-    osd::{OsdFile, OsdOptions},
+    osd::{OsdFile, OsdFileError, OsdOptions},
     srt::{SrtFile, SrtOptions},
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -46,6 +46,7 @@ pub struct WalksnailOsdTool {
     pub about_window_open: bool,
     pub dark_mode: bool,
     pub app_update: AppUpdate,
+    pub artlynk_extraction_promise: Option<Promise<Result<Option<OsdFile>, OsdFileError>>>,
     pub app_version: String,
     pub target: String,
 }
@@ -193,6 +194,7 @@ impl eframe::App for WalksnailOsdTool {
 
         self.receive_ffmpeg_message();
         self.poll_update_check();
+        self.poll_artlynk_extraction(ctx);
 
         self.render_top_panel(ctx);
 
@@ -303,6 +305,35 @@ impl WalksnailOsdTool {
             let config: AppConfig = self.into();
             config.save();
             self.config_changed = None;
+        }
+    }
+
+    fn poll_artlynk_extraction(&mut self, ctx: &egui::Context) {
+        if let Some(promise) = &self.artlynk_extraction_promise {
+            let ready_result: Option<&Result<Option<OsdFile>, OsdFileError>> = promise.ready();
+            if let Some(result) = ready_result {
+                match result {
+                    Ok(Some(osd_file)) => {
+                        tracing::info!("Artlynk OSD extraction finished. Found {} frames.", osd_file.frame_count);
+                        self.osd_file = Some(osd_file.clone());
+                        self.osd_preview.preview_frame = 1;
+
+                        // After extraction, we need to re-trigger auto-selections that depend on OSD data
+                        self.auto_select_bundled_font();
+                        self.auto_center_horizontal();
+
+                        self.update_osd_preview(ctx);
+                        self.auto_resize_window(ctx);
+                    }
+                    Ok(None) => {
+                        tracing::info!("Artlynk OSD extraction finished. No OSD data found.");
+                    }
+                    Err(e) => {
+                        tracing::error!("Artlynk OSD extraction failed: {}", e);
+                    }
+                }
+                self.artlynk_extraction_promise = None;
+            }
         }
     }
 
