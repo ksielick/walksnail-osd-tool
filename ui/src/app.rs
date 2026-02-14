@@ -88,9 +88,10 @@ impl WalksnailOsdTool {
         let render_settings = {
             let mut settings = RenderSettings::default();
             // Find first detected H.264 hardware encoder
-            if let Some(hw_encoder) = encoders.iter().find(|e| {
-                e.hardware && e.detected && e.codec == backend::ffmpeg::Codec::H264
-            }) {
+            if let Some(hw_encoder) = encoders
+                .iter()
+                .find(|e| e.hardware && e.detected && e.codec == backend::ffmpeg::Codec::H264)
+            {
                 settings.encoder = hw_encoder.clone();
                 // Compute the index within the detected-only list (matching the UI ComboBox filter)
                 settings.selected_encoder_idx = encoders
@@ -314,7 +315,10 @@ impl WalksnailOsdTool {
             if let Some(result) = ready_result {
                 match result {
                     Ok(Some(osd_file)) => {
-                        tracing::info!("Artlynk OSD extraction finished. Found {} frames.", osd_file.frame_count);
+                        tracing::info!(
+                            "Artlynk OSD extraction finished. Found {} frames.",
+                            osd_file.frame_count
+                        );
                         self.osd_file = Some(osd_file.clone());
                         self.osd_preview.preview_frame = 1;
 

@@ -106,7 +106,11 @@ pub fn start_video_render(
 }
 
 #[tracing::instrument(skip(ffmpeg_path))]
-pub fn spawn_decoder(ffmpeg_path: &PathBuf, input_video: &PathBuf, use_hwaccel: bool) -> Result<FfmpegChild, FfmpegError> {
+pub fn spawn_decoder(
+    ffmpeg_path: &PathBuf,
+    input_video: &PathBuf,
+    use_hwaccel: bool,
+) -> Result<FfmpegChild, FfmpegError> {
     let mut cmd = FfmpegCommand::new_with_path(ffmpeg_path);
     cmd.create_no_window();
     if use_hwaccel {

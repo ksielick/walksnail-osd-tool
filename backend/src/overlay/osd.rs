@@ -72,7 +72,9 @@ pub fn overlay_osd(
         if character.index == 0 || osd_options.get_mask(&character.grid_position) {
             continue;
         }
-        if let Some(scaled_image) = get_scaled_glyph(font, character.index, &base_character_size, scaled_width, scaled_height) {
+        if let Some(scaled_image) =
+            get_scaled_glyph(font, character.index, &base_character_size, scaled_width, scaled_height)
+        {
             let grid_position = &character.grid_position;
             overlay(
                 image,

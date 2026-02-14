@@ -93,13 +93,14 @@ impl WalksnailOsdTool {
             };
 
             if should_auto_select {
-                if let Some(font) = backend::font::bundled_fonts::get_bundled_font(
-                    &osd_file.fc_firmware,
-                    &character_size,
-                ) {
+                if let Some(font) =
+                    backend::font::bundled_fonts::get_bundled_font(&osd_file.fc_firmware, &character_size)
+                {
                     tracing::info!(
                         "Auto-selected bundled font: {:?} for firmware {:?}, resolution {:?}",
-                        font.file_path, osd_file.fc_firmware, character_size
+                        font.file_path,
+                        osd_file.fc_firmware,
+                        character_size
                     );
                     self.font_file = Some(font);
                 }

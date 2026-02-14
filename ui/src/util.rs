@@ -4,7 +4,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use backend::{config::AppConfig, ffmpeg::VideoInfo, font::FontFile, osd::OsdFile, srt::{SrtFile, SrtOptions}};
+use backend::{
+    config::AppConfig,
+    ffmpeg::VideoInfo,
+    font::FontFile,
+    osd::OsdFile,
+    srt::{SrtFile, SrtOptions},
+};
 use egui::{FontFamily, FontId, Margin, RichText, Separator, TextStyle, Ui};
 use github_release_check::{GitHubReleaseItem, LookupError};
 use poll_promise::Promise;
@@ -55,10 +61,7 @@ impl WalksnailOsdTool {
                 let video_path = video_file.clone();
 
                 self.artlynk_extraction_promise = Some(Promise::spawn_thread("Artlynk extraction", move || {
-                    backend::osd::artlynk::extract_osd_from_video(
-                        &ffmpeg_path,
-                        &video_path,
-                    )
+                    backend::osd::artlynk::extract_osd_from_video(&ffmpeg_path, &video_path)
                 }));
             }
         }
@@ -75,7 +78,10 @@ impl WalksnailOsdTool {
         if let Some(srt_file_path) = filter_file_with_extention(file_handles, "srt") {
             self.srt_file = SrtFile::open(srt_file_path.clone()).ok();
 
-            let file_name = srt_file_path.file_name().map(|f| f.to_string_lossy().to_lowercase()).unwrap_or_default();
+            let file_name = srt_file_path
+                .file_name()
+                .map(|f| f.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
             if file_name.starts_with("avatar") || file_name.starts_with("ascent") {
                 tracing::info!("Applying Avatar/Ascent SRT defaults");
                 self.srt_options = SrtOptions::walksnail_optimized();

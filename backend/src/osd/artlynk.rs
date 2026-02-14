@@ -1,21 +1,27 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
 
 use regex::Regex;
 
-use super::error::OsdFileError;
-use super::fc_firmware::FcFirmware;
-use super::frame::Frame;
-use super::glyph::{Glyph, GridPosition};
-use super::osd_file::OsdFile;
+use super::{
+    error::OsdFileError,
+    fc_firmware::FcFirmware,
+    frame::Frame,
+    glyph::{Glyph, GridPosition},
+    osd_file::OsdFile,
+};
 
 const GRID_WIDTH: usize = 53;
 const GRID_HEIGHT: usize = 20;
 
 /// Extract SEI User Data entries from a video file using ffmpeg showinfo filter.
 /// Returns a list of (pts_seconds, hex_string) tuples.
-fn extract_sei_data(ffmpeg_path: &PathBuf, video_path: &PathBuf, max_duration: Option<Duration>) -> Vec<(f64, String)> {
+fn extract_sei_data(
+    ffmpeg_path: &Path,
+    video_path: &Path,
+    max_duration: Option<Duration>,
+) -> Vec<(f64, String)> {
     let mut command = Command::new(ffmpeg_path);
 
     let duration_str = max_duration.map(|t| format!("{:.3}", t.as_secs_f64()));
@@ -48,15 +54,17 @@ fn extract_sei_data(ffmpeg_path: &PathBuf, video_path: &PathBuf, max_duration: O
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    let pattern = Regex::new(r"(?s)pts_time:([\d.]+).*?User Data=([0-9a-fA-F\s]+)")
-        .expect("Invalid regex");
+    let pattern = Regex::new(r"(?s)pts_time:([\d.]+).*?User Data=([0-9a-fA-F\s]+)").expect("Invalid regex");
 
     let entries: Vec<_> = pattern
         .captures_iter(&stderr)
         .filter_map(|cap| {
             let pts: f64 = cap[1].parse().ok()?;
             let hex = cap[2].to_string();
-            tracing::debug!("Captured SEI hex (first 50 chars): {}", &hex.chars().take(50).collect::<String>());
+            tracing::debug!(
+                "Captured SEI hex (first 50 chars): {}",
+                &hex.chars().take(50).collect::<String>()
+            );
             Some((pts, hex))
         })
         .collect();
@@ -82,16 +90,17 @@ fn parse_msp_payload(hex_string: &str) -> Option<Vec<(u8, u8, u16)>> {
     }
 
     // 2. Remove all non-hex characters (except spaces which hex::decode handles poorly if not removed)
-    let clean_hex: String = cleaned
-        .chars()
-        .filter(|c| c.is_ascii_hexdigit())
-        .collect();
+    let clean_hex: String = cleaned.chars().filter(|c| c.is_ascii_hexdigit()).collect();
 
     // Convert to bytes
     let raw_bytes = match hex::decode(&clean_hex) {
         Ok(b) => b,
         Err(e) => {
-            tracing::debug!("Hex decode failed for string: {}... error: {}", &clean_hex.chars().take(20).collect::<String>(), e);
+            tracing::debug!(
+                "Hex decode failed for string: {}... error: {}",
+                &clean_hex.chars().take(20).collect::<String>(),
+                e
+            );
             return None;
         }
     };
@@ -146,16 +155,14 @@ fn parse_msp_payload(hex_string: &str) -> Option<Vec<(u8, u8, u16)>> {
     Some(active_glyphs)
 }
 
-/// Extract OSD data from an Artlynk video file's SEI User Data messages.
-/// Returns an OsdFile if SEI OSD data is found, or None if the video doesn't contain it.
 #[tracing::instrument(ret, err)]
 pub fn extract_osd_from_video(
-    ffmpeg_path: &PathBuf,
-    video_path: &PathBuf,
+    ffmpeg_path: &Path,
+    video_path: &Path,
 ) -> Result<Option<OsdFile>, OsdFileError> {
     let filename = video_path
         .file_name()
-        .and_then(|f| f.to_str())
+        .and_then(|f: &std::ffi::OsStr| f.to_str())
         .unwrap_or("")
         .to_lowercase();
 
@@ -196,10 +203,7 @@ pub fn extract_osd_from_video(
         let glyphs: Vec<Glyph> = glyphs_raw
             .into_iter()
             .filter(|&(row, col, idx)| {
-                (col as usize) < GRID_WIDTH
-                    && (row as usize) < GRID_HEIGHT
-                    && idx != 0x00
-                    && idx != 0x20
+                (col as usize) < GRID_WIDTH && (row as usize) < GRID_HEIGHT && idx != 0x00 && idx != 0x20
             })
             .map(|(row, col, idx)| Glyph {
                 index: idx,
@@ -226,8 +230,7 @@ pub fn extract_osd_from_video(
     let frame_count = frames.len() as u32;
 
     let frame_interval = if frames.len() > 1 {
-        (frames.last().unwrap().time_millis - frames.first().unwrap().time_millis) as f32
-            / (frames.len() - 1) as f32
+        (frames.last().unwrap().time_millis - frames.first().unwrap().time_millis) as f32 / (frames.len() - 1) as f32
     } else {
         33.0 // ~30fps default
     };
@@ -235,13 +238,10 @@ pub fn extract_osd_from_video(
     let duration = Duration::from_millis(frames.last().unwrap().time_millis.into())
         + Duration::from_secs_f32(frame_interval / 1000.0);
 
-    tracing::info!(
-        "Extracted {} OSD frames from Artlynk SEI data",
-        frame_count
-    );
+    tracing::info!("Extracted {} OSD frames from Artlynk SEI data", frame_count);
 
     Ok(Some(OsdFile {
-        file_path: video_path.clone(),
+        file_path: video_path.to_path_buf(),
         fc_firmware: FcFirmware::Betaflight,
         frame_count,
         duration,

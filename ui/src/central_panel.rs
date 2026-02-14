@@ -232,20 +232,48 @@ impl WalksnailOsdTool {
                         let has_sty_mode = srt_file.map(|s| s.has_sty_mode).unwrap_or(false);
 
                         ui.horizontal_wrapped(|ui| {
-                            if has_time { changed |= ui.checkbox(&mut options.show_time, "FlightTime").changed(); }
-                            if has_sbat { changed |= ui.checkbox(&mut options.show_sbat, "SBat").changed(); }
-                            if has_gbat { changed |= ui.checkbox(&mut options.show_gbat, "GBat").changed(); }
-                            if has_signal { changed |= ui.checkbox(&mut options.show_signal, "Signal").changed(); }
-                            if has_latency { changed |= ui.checkbox(&mut options.show_latency, "Latency").changed(); }
-                            if has_bitrate { changed |= ui.checkbox(&mut options.show_bitrate, "Bitrate").changed(); }
-                            if has_distance { changed |= ui.checkbox(&mut options.show_distance, "Distance").changed(); }
-                            if has_channel { changed |= ui.checkbox(&mut options.show_channel, "CH").changed(); }
-                            if has_hz { changed |= ui.checkbox(&mut options.show_hz, "Hz").changed(); }
-                            if has_sp { changed |= ui.checkbox(&mut options.show_sp, "Sp").changed(); }
-                            if has_gp { changed |= ui.checkbox(&mut options.show_gp, "Gp").changed(); }
-                            if has_air_temp { changed |= ui.checkbox(&mut options.show_air_temp, "AirTemp").changed(); }
-                            if has_gnd_temp { changed |= ui.checkbox(&mut options.show_gnd_temp, "GndTemp").changed(); }
-                            if has_sty_mode { changed |= ui.checkbox(&mut options.show_sty_mode, "STYMode").changed(); }
+                            if has_time {
+                                changed |= ui.checkbox(&mut options.show_time, "FlightTime").changed();
+                            }
+                            if has_sbat {
+                                changed |= ui.checkbox(&mut options.show_sbat, "SBat").changed();
+                            }
+                            if has_gbat {
+                                changed |= ui.checkbox(&mut options.show_gbat, "GBat").changed();
+                            }
+                            if has_signal {
+                                changed |= ui.checkbox(&mut options.show_signal, "Signal").changed();
+                            }
+                            if has_latency {
+                                changed |= ui.checkbox(&mut options.show_latency, "Latency").changed();
+                            }
+                            if has_bitrate {
+                                changed |= ui.checkbox(&mut options.show_bitrate, "Bitrate").changed();
+                            }
+                            if has_distance {
+                                changed |= ui.checkbox(&mut options.show_distance, "Distance").changed();
+                            }
+                            if has_channel {
+                                changed |= ui.checkbox(&mut options.show_channel, "CH").changed();
+                            }
+                            if has_hz {
+                                changed |= ui.checkbox(&mut options.show_hz, "Hz").changed();
+                            }
+                            if has_sp {
+                                changed |= ui.checkbox(&mut options.show_sp, "Sp").changed();
+                            }
+                            if has_gp {
+                                changed |= ui.checkbox(&mut options.show_gp, "Gp").changed();
+                            }
+                            if has_air_temp {
+                                changed |= ui.checkbox(&mut options.show_air_temp, "AirTemp").changed();
+                            }
+                            if has_gnd_temp {
+                                changed |= ui.checkbox(&mut options.show_gnd_temp, "GndTemp").changed();
+                            }
+                            if has_sty_mode {
+                                changed |= ui.checkbox(&mut options.show_sty_mode, "STYMode").changed();
+                            }
                         });
                         ui.end_row();
                     });
