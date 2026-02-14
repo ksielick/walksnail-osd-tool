@@ -1,6 +1,4 @@
-use std::path::Path;
-use std::process::Command;
-use std::time::Duration;
+use std::{path::Path, process::Command, time::Duration};
 
 use regex::Regex;
 
@@ -17,11 +15,7 @@ const GRID_HEIGHT: usize = 20;
 
 /// Extract SEI User Data entries from a video file using ffmpeg showinfo filter.
 /// Returns a list of (pts_seconds, hex_string) tuples.
-fn extract_sei_data(
-    ffmpeg_path: &Path,
-    video_path: &Path,
-    max_duration: Option<Duration>,
-) -> Vec<(f64, String)> {
+fn extract_sei_data(ffmpeg_path: &Path, video_path: &Path, max_duration: Option<Duration>) -> Vec<(f64, String)> {
     let mut command = Command::new(ffmpeg_path);
 
     let duration_str = max_duration.map(|t| format!("{:.3}", t.as_secs_f64()));
@@ -156,10 +150,7 @@ fn parse_msp_payload(hex_string: &str) -> Option<Vec<(u8, u8, u16)>> {
 }
 
 #[tracing::instrument(ret, err)]
-pub fn extract_osd_from_video(
-    ffmpeg_path: &Path,
-    video_path: &Path,
-) -> Result<Option<OsdFile>, OsdFileError> {
+pub fn extract_osd_from_video(ffmpeg_path: &Path, video_path: &Path) -> Result<Option<OsdFile>, OsdFileError> {
     let filename = video_path
         .file_name()
         .and_then(|f: &std::ffi::OsStr| f.to_str())
