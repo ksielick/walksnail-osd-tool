@@ -22,7 +22,7 @@ Cross-platform tool for rendering the flight controller OSD and SRT data from th
 - Automatically center the OSD or position it manually.
 - Render selected info from the SRT file.
 - Selectable output video bitrate (more encoder settings will be added later).
-- Upscale output video to 1440p for higher quality when uploading to YouTube.
+- Upscale output video to 1440p or 2160p for higher quality when uploading to YouTube.
 - Mask OSD items ([demo](https://imgur.com/u8xi2tX)).
 
 Anything else? Open a feature request [here](https://github.com/ksielick/walksnail-osd-tool/issues/new?assignees=&labels=enhancement&template=feature_request.yaml).
