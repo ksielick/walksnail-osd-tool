@@ -55,6 +55,7 @@ The project builds on Ubuntu in CI but I don't know enough about packaging for L
 ### Similar projects
 - [kirek007/ws-osd-py](https://github.com/kirek007/ws-osd-py): Python-based tool with GUI and CLI. No longer maintained in favor of this project but has a few features that this project currently lacks. Depending on your OS it can require some manual setup due to Python dependencies.
 - [shellixyz/hd_fpv_video_tool](https://github.com/shellixyz/hd_fpv_video_tool): Rust-based CLI tool with support for with Walksnail and DJI. Mainly targets Linux and can be difficult to build from source on Windows and MacOS. Has some cool features like live playback of the DVR with OSD without rendering.
+- https://gist.github.com/henkwiedig/f52444800a6f2323e6de7e69031772fb: Used this script to extract OSD data 
 
 ## Disclaimer
 This project is not affiliated with Walksnail/Caddx.
