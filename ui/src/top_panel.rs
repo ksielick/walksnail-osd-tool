@@ -76,11 +76,14 @@ impl WalksnailOsdTool {
             )
             .clicked()
         {
+            tracing::info!("Select font folder clicked, opening picker");
             if let Some(path) = rfd::FileDialog::new().pick_folder() {
                 tracing::info!("Selected font folder: {:?}", path);
                 self.userfont_path = path;
                 self.auto_select_font();
                 self.config_changed = Some(std::time::Instant::now());
+            } else {
+                tracing::warn!("Font folder picker returned no selection (cancelled or failed to open)");
             }
         }
     }
