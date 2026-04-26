@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use derivative::Derivative;
-use image::{io::Reader, DynamicImage, GenericImageView, ImageBuffer, Rgba, RgbaImage};
+use image::{DynamicImage, GenericImageView, ImageBuffer, ImageReader, Rgba, RgbaImage};
 
 use super::{
     dimensions::{detect_dimensions, CharacterSize, FontType},
@@ -22,7 +22,7 @@ pub struct FontFile {
 impl FontFile {
     #[tracing::instrument(ret, err)]
     pub fn open(path: PathBuf) -> Result<Self, FontFileError> {
-        let font_image = Reader::open(&path)?.decode()?;
+        let font_image = ImageReader::open(&path)?.decode()?;
         let (width, height) = font_image.dimensions();
         let (character_size, font_type, character_count) = detect_dimensions(width, height)?;
 

@@ -44,7 +44,7 @@ pub struct WalksnailOsdTool {
     pub osd_preview: OsdPreview,
     pub osd_options: OsdOptions,
     pub srt_options: SrtOptions,
-    pub srt_font: Option<rusttype::Font<'static>>,
+    pub srt_font: Option<ab_glyph::FontArc>,
     pub about_window_open: bool,
     pub dark_mode: bool,
     pub app_update: AppUpdate,
@@ -75,8 +75,9 @@ impl WalksnailOsdTool {
         set_custom_fonts(ctx);
         ctx.set_visuals(visuals);
 
-        let srt_font: rusttype::Font<'static> =
-            rusttype::Font::try_from_bytes(include_bytes!("../../resources/fonts/AzeretMono-Regular.ttf")).unwrap();
+        let srt_font =
+            ab_glyph::FontArc::try_from_slice(include_bytes!("../../resources/fonts/AzeretMono-Regular.ttf"))
+                .expect("bundled SRT font is a valid TTF");
 
         let srt_options = saved_settings.srt_options;
         let osd_options = saved_settings.osd_options;
@@ -181,10 +182,11 @@ impl Clone for AppUpdate {
 }
 
 impl eframe::App for WalksnailOsdTool {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.missing_dependencies_warning(ctx);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+        self.missing_dependencies_warning(&ctx);
 
-        self.update_window(ctx);
+        self.update_window(&ctx);
 
         // Keep updating the UI thread when rendering to make sure the indicated progress is up-to-date
         if self.render_status.is_in_progress() {
@@ -194,15 +196,15 @@ impl eframe::App for WalksnailOsdTool {
         self.receive_ffmpeg_message();
         self.poll_update_check();
         self.poll_dependency_check();
-        self.poll_artlynk_extraction(ctx);
+        self.poll_artlynk_extraction(&ctx);
 
-        self.render_top_panel(ctx);
+        self.render_top_panel(ui);
 
-        self.render_bottom_panel(ctx);
+        self.render_bottom_panel(ui);
 
-        self.render_sidepanel(ctx);
+        self.render_sidepanel(ui);
 
-        self.render_central_panel(ctx);
+        self.render_central_panel(ui);
 
         self.save_config_if_changed();
     }
@@ -218,7 +220,7 @@ impl WalksnailOsdTool {
                 .fixed_size(vec2(350.0, 300.0))
                 .collapsible(false)
                 .show(ctx, |ui| {
-                    let style = ctx.style();
+                    let style = ctx.global_style();
 
                     let (default_color, strong_color) = if ui.visuals().dark_mode {
                         (Color32::LIGHT_GRAY, Color32::WHITE)
@@ -415,7 +417,7 @@ impl WalksnailOsdTool {
     fn update_window(&mut self, ctx: &egui::Context) {
         if self.app_update.window_open {
             if let Some(latest_release) = &self.app_update.new_release {
-                let frame = Frame::window(&ctx.style());
+                let frame = Frame::window(&ctx.global_style());
                 Window::new("App update!")
                     .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
                     .frame(frame)

@@ -1,12 +1,21 @@
 use std::process::Command;
 
-use vergen::{vergen, Config};
-
 fn main() {
     println!("cargo:rerun-if-changed=./src");
 
-    // Save details from build environment so they can be included in the binary
-    vergen(Config::default()).unwrap();
+    // Target triple — Cargo passes this in via TARGET env var for build scripts.
+    let target = std::env::var("TARGET").unwrap_or_default();
+    println!("cargo:rustc-env=VERGEN_CARGO_TARGET_TRIPLE={target}");
+
+    // rustc semver — parse from `rustc --version`.
+    let rustc_version = Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .and_then(|s| s.split_whitespace().nth(1).map(str::to_string))
+        .unwrap_or_default();
+    println!("cargo:rustc-env=VERGEN_RUSTC_SEMVER={rustc_version}");
 
     if let Some(git_tag) = Command::new("git")
         .args(["describe", "--exact-match", "--tags", "HEAD"])
@@ -33,7 +42,7 @@ fn main() {
     // Load icon data
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
     let dest_path = std::path::Path::new(&out_dir).join("icon_bytes");
-    let icon = image::io::Reader::open("../resources/icons/256x256.png")
+    let icon = image::ImageReader::open("../resources/icons/256x256.png")
         .expect("Failed to load icon file")
         .decode()
         .expect("Failed to decode icon file");

@@ -135,7 +135,7 @@ pub fn find_compatible_fonts(
                 };
 
                 if is_firmware_match {
-                    if let Ok(reader) = image::io::Reader::open(&path) {
+                    if let Ok(reader) = image::ImageReader::open(&path) {
                         if let Ok((width, height)) = reader.into_dimensions() {
                             if let Ok((size, _, _)) = crate::font::dimensions::detect_dimensions(width, height) {
                                 if size == *character_size {

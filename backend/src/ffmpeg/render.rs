@@ -40,7 +40,7 @@ pub fn start_video_render(
     osd_frames: Vec<osd::Frame>,
     srt_frames: Vec<srt::SrtFrame>,
     font_file: font::FontFile,
-    srt_font: rusttype::Font<'static>,
+    srt_font: ab_glyph::FontArc,
     osd_options: &OsdOptions,
     srt_options: &SrtOptions,
     video_info: &VideoInfo,
@@ -70,9 +70,7 @@ pub fn start_video_render(
     let (to_ffmpeg_tx, to_ffmpeg_rx) = crossbeam_channel::unbounded();
 
     let font_file = Arc::new(font_file);
-    // srt_font is 'static, so Arc is fine? It's rusttype::Font. Sync? Yes.
-    // rusttype::Font<'a> is Sync.
-    let srt_font = Arc::new(srt_font);
+    // ab_glyph::FontArc is already an internal Arc — no extra wrapping needed.
     let osd_options = Arc::new(osd_options.clone());
     let srt_options = Arc::new(srt_options.clone());
     let chroma_key_rgba = if render_settings.use_chroma_key {

@@ -3,11 +3,12 @@ use egui::{vec2, Align2, Button, Frame, Label, RichText, Sense, Ui, ViewportComm
 use super::WalksnailOsdTool;
 
 impl WalksnailOsdTool {
-    pub fn render_top_panel(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+    pub fn render_top_panel(&mut self, root_ui: &mut Ui) {
+        let ctx = root_ui.ctx().clone();
+        egui::Panel::top("top_panel").show_inside(root_ui, |ui| {
             ui.add_space(5.0);
             ui.horizontal(|ui| {
-                self.import_files(ui, ctx);
+                self.import_files(ui, &ctx);
                 self.select_font_folder(ui);
                 self.reset_files(ui);
                 ui.add_space(30.0);
@@ -17,8 +18,8 @@ impl WalksnailOsdTool {
                     "https://sites.google.com/view/sneaky-fpv/",
                 );
                 ui.add_space(ui.available_width() - 55.0);
-                self.toggle_light_dark_theme(ui, ctx);
-                self.about_window(ui, ctx);
+                self.toggle_light_dark_theme(ui, &ctx);
+                self.about_window(ui, &ctx);
             });
             ui.add_space(3.0);
         });
@@ -108,9 +109,9 @@ impl WalksnailOsdTool {
 
             if let Some(font_file) = &self.font_file {
                 if let Some(name) = font_file.file_path.file_name().and_then(|n| n.to_str()) {
-                    if let Some(font_id) = ctx.style().text_styles.get(&egui::TextStyle::Body) {
-                        let text_width = ctx.fonts(|f| {
-                            f.layout_no_wrap(name.to_string(), font_id.clone(), egui::Color32::WHITE)
+                    if let Some(font_id) = ctx.global_style().text_styles.get(&egui::TextStyle::Body) {
+                        let text_width = ctx.fonts_mut(|f| {
+                            f.layout(name.to_string(), font_id.clone(), egui::Color32::WHITE, f32::INFINITY)
                                 .size()
                                 .x
                         });
@@ -161,7 +162,7 @@ impl WalksnailOsdTool {
             self.about_window_open = !self.about_window_open;
         }
 
-        let frame = Frame::window(&ctx.style());
+        let frame = Frame::window(&ctx.global_style());
         if self.about_window_open {
             Window::new("About")
                 .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
@@ -184,7 +185,7 @@ impl WalksnailOsdTool {
                             .on_hover_text_at_pointer("Double-click to copy to clipboard")
                             .double_clicked()
                         {
-                            ui.output_mut(|o| o.copied_text.clone_from(version));
+                            ui.output_mut(|o| o.commands.push(egui::OutputCommand::CopyText(version.clone())));
                         }
                         ui.end_row();
 
