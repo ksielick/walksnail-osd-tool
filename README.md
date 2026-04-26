@@ -58,8 +58,46 @@ The project builds on Ubuntu in CI but I don't know enough about packaging for L
 ### Building from source
 1. Install the [Rust toolchain](https://www.rust-lang.org/tools/install).
 2. Run `cargo install --git https://github.com/ksielick/walksnail-osd-tool.git`. The executable will be installed in `$HOME/.cargo/bin/` and added to your path.
-3. To run the app you need the `ffmpeg` and `ffprobe` binaries in your `path` or placed next to the executable you just build.
+3. Make `ffmpeg` and `ffprobe` available — see [Installing ffmpeg](#installing-ffmpeg) below.
 4. Run the app with `walksnail-osd-tool`.
+
+#### Installing ffmpeg
+
+The app shells out to `ffmpeg` and `ffprobe` at runtime. Released `.app` bundles and the Windows installer ship both binaries. When you run from source (`cargo run` or the binary built by `cargo install`), you need to provide them yourself — either on your `PATH`, or placed next to the executable.
+
+**macOS** — install via [Homebrew](https://brew.sh):
+
+```sh
+brew install ffmpeg
+```
+
+This puts `ffmpeg` and `ffprobe` on your `PATH`. Confirm with `which ffmpeg ffprobe`.
+
+Alternatively, the repo ships prebuilt binaries under `ext/ffmpeg/macos-arm/` and `ext/ffmpeg/macos-intel/`. Unzip the two archives matching your CPU and either move them to a directory on your `PATH` or put them next to the `walksnail-osd-tool` executable. On first run macOS will quarantine them — clear with `xattr -d com.apple.quarantine /path/to/ffmpeg /path/to/ffprobe`.
+
+**Linux** — install via your package manager, e.g. on Debian/Ubuntu:
+
+```sh
+sudo apt install ffmpeg
+```
+
+This installs both `ffmpeg` and `ffprobe`. Other distros: `dnf install ffmpeg` (Fedora), `pacman -S ffmpeg` (Arch).
+
+**Windows** — install via [Chocolatey](https://chocolatey.org/):
+
+```powershell
+choco install ffmpeg
+```
+
+Or [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+
+```powershell
+winget install Gyan.FFmpeg
+```
+
+Either route puts both binaries on your `PATH`. Restart your terminal afterwards so the new `PATH` takes effect.
+
+To verify the app can find them, the startup log line `ffmpeg_available ... return: true` appears in the terminal you launched the app from. If you still see the "ffmpeg and/or ffprobe could not be found" popup, run `which ffmpeg ffprobe` (macOS/Linux) or `where ffmpeg ffprobe` (Windows) — both must resolve before launching the app.
 
 ### Similar projects
 - [kirek007/ws-osd-py](https://github.com/kirek007/ws-osd-py): Python-based tool with GUI and CLI. No longer maintained in favor of this project but has a few features that this project currently lacks. Depending on your OS it can require some manual setup due to Python dependencies.
