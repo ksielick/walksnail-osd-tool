@@ -187,7 +187,7 @@ impl WalksnailOsdTool {
                                     if let Some(osd_file) = osd_file {
                                         if osd_file.is_empty() {
                                             ui.label(RichText::new(format!("{} (Empty/Corrupted !)", osd_file.frame_count)).color(Color32::RED))
-                                                .on_hover_text("This OSD file contains no visible data (all frames are empty). It might be corrupted or the VTX failed to record OSD data.");
+                                                .on_hover_text("This OSD file contains no data (all frames are empty).\n\nIf you are using Avatar firmware 39.44.15, VTX recordings are known to be corrupted. Please use the .osd file from your goggles instead.");
                                         } else {
                                             ui.label(osd_file.frame_count.to_string());
                                         }
