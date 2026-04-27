@@ -7,14 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [0.5.3] - 2026-04-27
 
 ### Added
-- **Fallback Firmware Detection**: Implemented OSD frame scanning to detect Betaflight, INAV, and ArduPilot signatures when the file header identifier is missing.
-- **Corrupted/Empty File Detection**: Added a scan that identifies OSD files with no visible data (all zeros) and displays a red "Empty/Corrupted !" warning in the UI.
-- **Improved Unknown Firmware UI**: Added a red warning and exclamation mark for "Unknown" firmware to highlight potential font auto-selection issues.
+- **Improved Firmware Detection**: The tool can now automatically identify the flight controller (Betaflight, INAV, ArduPilot) by scanning the OSD content if the file header is missing.
+- **Corrupted File Alerts**: Added a red warning for empty or corrupted OSD files, specifically addressing issues seen in some VTX firmware versions (e.g., Avatar 39.44.15).
+- **Unknown Firmware Indicator**: Added a red warning for "Unknown" firmware to highlight when manual font selection might be required.
 
 ### Fixed
-- **Stability and Crash Prevention**: Hardened the application against crashes when loading malformed, empty, or missing files. Fixed multiple `unwrap()` panics in file loading, path handling, and OSD centering logic.
-- **Avatar OSD Compatibility**: Improved compatibility with native Avatar OSD files by making the header parsing more lenient (handling binary data) and relaxing frame size requirements.
-- **Encoder Selection Safety**: Prevented app crashes when no video encoders are detected on the host system.
+- **Enhanced App Stability**: Fixed several issues that caused the application to crash when loading malformed, empty, or missing files.
+- **Better Avatar Compatibility**: Improved support for loading and processing native Avatar OSD files.
+- **Encoder Safety**: Fixed a crash that occurred if no video encoders were found on the computer.
 
 ## [0.5.2] - 2026-04-25
 
