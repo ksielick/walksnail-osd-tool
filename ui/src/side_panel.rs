@@ -203,7 +203,34 @@ impl WalksnailOsdTool {
                                 });
                                 row.col(|ui| {
                                     if let Some(duration) = osd_file.map(|i| i.duration) {
-                                        ui.label(format_minutes_seconds(&duration));
+                                        let video_duration = self.video_info.as_ref().map(|v| v.duration);
+
+                                        let mut job = LayoutJob::default();
+                                        let style = ui.style();
+                                        let font_id = style.text_styles.get(&TextStyle::Body).unwrap().clone();
+
+                                        let mut duration_color = style.visuals.text_color();
+                                        let mut warning = None;
+
+                                        if let Some(v_dur) = video_duration {
+                                            if (v_dur.as_secs_f32() - duration.as_secs_f32()).abs() > 1.0 {
+                                                duration_color = Color32::RED;
+                                                warning = Some("Mismatch with video duration!");
+                                            }
+                                        }
+
+                                        job.append(
+                                            &format_minutes_seconds(&duration),
+                                            0.0,
+                                            TextFormat::simple(font_id.clone(), duration_color),
+                                        );
+
+                                        if let Some(msg) = warning {
+                                            job.append(" !", 5.0, TextFormat::simple(font_id, Color32::RED));
+                                            ui.label(job).on_hover_text(RichText::new(msg).color(Color32::RED));
+                                        } else {
+                                            ui.label(job);
+                                        }
                                     } else {
                                         ui.label("-");
                                     }

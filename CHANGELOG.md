@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Improved Firmware Detection**: The tool can now automatically identify the flight controller (Betaflight, INAV, ArduPilot) by scanning the OSD content if the file header is missing.
 - **Improved File Matching**: If a matching OSD or SRT file isn't found by name, the tool now automatically loads the first available file of that type from the folder.
 - **Enhanced Batch Processing**: Added support for sequenced OSD and SRT loading during batch processing, even when filenames don't match the video files.
+- **Duration Verification**: Added a visual warning (red text with `!`) in the UI when the loaded OSD file duration significantly differs from the video duration (matches SRT behavior).
 - **Corrupted File Alerts**: Added a red warning for empty or corrupted OSD files, specifically addressing issues seen in some VTX firmware versions (e.g., Avatar 39.44.15).
 - **Unknown Firmware Indicator**: Added a red warning for "Unknown" firmware to highlight when manual font selection might be required.
 
