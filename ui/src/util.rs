@@ -71,7 +71,8 @@ impl WalksnailOsdTool {
             }
 
             // Try to load the matching OSD and SRT files
-            let mut osd_to_import = find_matching_file_with_extension(video_file, "osd");
+            let video_duration = self.video_info.as_ref().map(|v| v.duration);
+            let mut osd_to_import = find_matching_file_with_extension(video_file, "osd", video_duration);
             if let (Some(old_video), Some(old_osd)) = (old_video_file.clone(), self.osd_file.as_ref().map(|o| o.file_path.clone())) {
                 if old_video.file_stem() != old_osd.file_stem() {
                     if let Some(next_osd) = find_next_osd_file(&old_osd) {
@@ -84,7 +85,7 @@ impl WalksnailOsdTool {
                 self.import_osd_file(&[osd_to_import]);
             }
 
-            let mut srt_to_import = find_matching_file_with_extension(video_file, "srt");
+            let mut srt_to_import = find_matching_file_with_extension(video_file, "srt", video_duration);
             if let (Some(old_video), Some(old_srt)) = (old_video_file, old_srt_file) {
                 if old_video.file_stem() != old_srt.file_stem() {
                     if let Some(next_srt) = find_next_srt_file(&old_srt) {
@@ -254,7 +255,11 @@ pub fn filter_file_with_extention<'a>(files: &'a [PathBuf], extention: &'a str) 
 }
 
 #[tracing::instrument(ret, level = "info")]
-pub fn find_matching_file_with_extension(path: &PathBuf, extension: &str) -> Option<PathBuf> {
+pub fn find_matching_file_with_extension(
+    path: &PathBuf,
+    extension: &str,
+    target_duration: Option<Duration>,
+) -> Option<PathBuf> {
     let file_name = path.file_stem().unwrap_or_default();
     let parent = path.parent().unwrap_or_else(|| Path::new(""));
     let direct_match = parent.join(file_name).with_extension(extension);
@@ -263,17 +268,50 @@ pub fn find_matching_file_with_extension(path: &PathBuf, extension: &str) -> Opt
         return Some(direct_match);
     }
 
-    // Fallback: search for the first file with the same extension in the same directory
+    // Fallback: search for the file with the closest duration match in the same directory
     if let Ok(entries) = std::fs::read_dir(parent) {
-        let mut files: Vec<PathBuf> = entries
+        let files: Vec<PathBuf> = entries
             .flatten()
             .map(|e| e.path())
             .filter(|p| {
                 p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension))
             })
             .collect();
-        files.sort();
-        return files.first().cloned();
+
+        if files.is_empty() {
+            return None;
+        }
+
+        if let Some(target) = target_duration {
+            let mut best_match = None;
+            let mut min_diff = f32::MAX;
+
+            for file in files {
+                let duration = if extension.eq_ignore_ascii_case("osd") {
+                    OsdFile::open(file.clone()).ok().map(|o| o.duration)
+                } else if extension.eq_ignore_ascii_case("srt") {
+                    SrtFile::open(file.clone()).ok().map(|s| s.duration)
+                } else {
+                    None
+                };
+
+                if let Some(dur) = duration {
+                    let diff = (dur.as_secs_f32() - target.as_secs_f32()).abs();
+                    if diff < min_diff {
+                        min_diff = diff;
+                        best_match = Some(file);
+                    }
+                }
+            }
+            if best_match.is_some() {
+                return best_match;
+            }
+        }
+
+        // Final fallback if duration matching failed or wasn't possible
+        let mut sorted_files = files;
+        sorted_files.sort();
+        return sorted_files.first().cloned();
     }
 
     None
