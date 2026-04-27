@@ -286,7 +286,7 @@ pub fn find_matching_file_with_extension(
             let mut best_match = None;
             let mut min_diff = f32::MAX;
 
-            for file in files {
+            for file in &files {
                 let duration = if extension.eq_ignore_ascii_case("osd") {
                     OsdFile::open(file.clone()).ok().map(|o| o.duration)
                 } else if extension.eq_ignore_ascii_case("srt") {
@@ -299,7 +299,7 @@ pub fn find_matching_file_with_extension(
                     let diff = (dur.as_secs_f32() - target.as_secs_f32()).abs();
                     if diff < min_diff {
                         min_diff = diff;
-                        best_match = Some(file);
+                        best_match = Some(file.clone());
                     }
                 }
             }
