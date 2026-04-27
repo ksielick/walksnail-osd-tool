@@ -241,10 +241,13 @@ impl WalksnailOsdTool {
     pub fn update_osd_preview(&mut self, ctx: &egui::Context) {
         if let (Some(video_info), Some(osd_file), Some(font_file)) = (&self.video_info, &self.osd_file, &self.font_file)
         {
-            let osd_frame = osd_file
-                .frames
-                .get(self.osd_preview.preview_frame as usize - 1)
-                .unwrap();
+            let osd_frame = if let Some(frame) = osd_file.frames.get(self.osd_preview.preview_frame as usize - 1) {
+                frame
+            } else if let Some(frame) = osd_file.frames.first() {
+                frame
+            } else {
+                return;
+            };
             #[allow(clippy::cast_precision_loss)]
             let timestamp = osd_frame.time_millis as f32 / 1000.0;
 
@@ -258,7 +261,9 @@ impl WalksnailOsdTool {
                             .frames
                             .iter()
                             .rfind(|f| f.start_time_secs <= timestamp)
-                            .unwrap_or_else(|| srt_file.frames.first().unwrap())
+                            .unwrap_or_else(|| {
+                                srt_file.frames.first().unwrap() // Safe because SrtFile::open ensures at least one frame
+                            })
                     })
             });
 

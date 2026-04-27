@@ -14,4 +14,6 @@ pub enum SrtFileError {
         #[from]
         source: srtparse::ReaderError,
     },
+    #[error("No frames found in SRT file")]
+    NoFrames,
 }

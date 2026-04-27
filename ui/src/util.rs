@@ -121,10 +121,8 @@ impl WalksnailOsdTool {
                             p.extension().is_some_and(|e| e.eq_ignore_ascii_case("mp4"))
                                 && !p
                                     .file_name()
-                                    .unwrap()
-                                    .to_string_lossy()
-                                    .to_lowercase()
-                                    .ends_with("_with_osd.mp4")
+                                    .and_then(|n| n.to_str())
+                                    .is_some_and(|n| n.to_lowercase().ends_with("_with_osd.mp4"))
                         })
                         .collect();
                     mp4_files.sort();
@@ -244,8 +242,8 @@ pub fn filter_file_with_extention<'a>(files: &'a [PathBuf], extention: &'a str) 
 
 #[tracing::instrument(ret, level = "info")]
 pub fn matching_file_with_extension(path: &PathBuf, extention: &str) -> PathBuf {
-    let file_name = path.file_stem().unwrap();
-    let parent = path.parent().unwrap();
+    let file_name = path.file_stem().unwrap_or_default();
+    let parent = path.parent().unwrap_or(Path::new(""));
     parent.join(file_name).with_extension(extention)
 }
 
@@ -283,9 +281,11 @@ pub fn format_minutes_seconds(duration: &Duration) -> String {
 }
 
 pub fn get_output_video_path(input_video_path: &Path) -> PathBuf {
-    let input_video_file_name = input_video_path.file_stem().unwrap().to_string_lossy();
+    let input_video_file_name = input_video_path
+        .file_stem()
+        .map_or_else(|| "output".to_string(), |s| s.to_string_lossy().to_string());
     let output_video_file_name = format!("{input_video_file_name}_with_osd.mp4");
-    let mut output_video_path = input_video_path.parent().unwrap().to_path_buf();
+    let mut output_video_path = input_video_path.parent().unwrap_or(Path::new("")).to_path_buf();
     output_video_path.push(output_video_file_name);
     output_video_path
 }
@@ -384,8 +384,8 @@ pub fn init_tracing() -> Option<WorkerGuard> {
 }
 
 pub fn get_dependency_path(dependency: &str) -> PathBuf {
-    let cur_exe = current_exe().unwrap();
-    let exe_dir = cur_exe.parent().unwrap();
+    let cur_exe = current_exe().unwrap_or_default();
+    let exe_dir = cur_exe.parent().unwrap_or(Path::new(""));
 
     if cfg!(all(target_os = "macos", feature = "macos-app-bundle")) {
         // Folder structure:
@@ -403,7 +403,7 @@ pub fn get_dependency_path(dependency: &str) -> PathBuf {
         // +-- ffmpeg
         //     +-- ffmpeg.exe
         //     +-- ffprobe.exe
-        exe_dir.parent().unwrap().join("ffmpeg").join(dependency)
+        exe_dir.parent().unwrap_or(Path::new("")).join("ffmpeg").join(dependency)
     } else {
         dependency.into()
     }

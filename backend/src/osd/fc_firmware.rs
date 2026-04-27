@@ -31,8 +31,17 @@ impl TryFrom<&[u8]> for FcFirmware {
     type Error = OsdFileError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        let string = std::str::from_utf8(value)?;
-        string.try_into()
+        if value.len() < 4 {
+            return Ok(Self::Unknown);
+        }
+        match &value[0..4] {
+            b"BTFL" => Ok(Self::Betaflight),
+            b"INAV" => Ok(Self::Inav),
+            b"ARDU" => Ok(Self::ArduPilot),
+            b"KISS" => Ok(Self::Kiss),
+            b"ULTR" => Ok(Self::KissUltra),
+            _ => Ok(Self::Unknown),
+        }
     }
 }
 

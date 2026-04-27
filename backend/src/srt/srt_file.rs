@@ -120,6 +120,10 @@ impl SrtFile {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        if srt_frames.is_empty() {
+            return Err(SrtFileError::NoFrames);
+        }
+
         let duration = Duration::from_secs_f32(srt_frames.last().unwrap().end_time_secs);
 
         Ok(Self {

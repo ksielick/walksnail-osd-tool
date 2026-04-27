@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-04-27
+
+### Added
+- **Fallback Firmware Detection**: Implemented OSD frame scanning to detect Betaflight, INAV, and ArduPilot signatures when the file header identifier is missing.
+- **Corrupted/Empty File Detection**: Added a scan that identifies OSD files with no visible data (all zeros) and displays a red "Empty/Corrupted !" warning in the UI.
+- **Improved Unknown Firmware UI**: Added a red warning and exclamation mark for "Unknown" firmware to highlight potential font auto-selection issues.
+
+### Fixed
+- **Stability and Crash Prevention**: Hardened the application against crashes when loading malformed, empty, or missing files. Fixed multiple `unwrap()` panics in file loading, path handling, and OSD centering logic.
+- **Avatar OSD Compatibility**: Improved compatibility with native Avatar OSD files by making the header parsing more lenient (handling binary data) and relaxing frame size requirements.
+- **Encoder Selection Safety**: Prevented app crashes when no video encoders are detected on the host system.
+
 ## [0.5.2] - 2026-04-25
 
 ### Added

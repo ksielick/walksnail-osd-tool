@@ -18,4 +18,8 @@ pub enum OsdFileError {
         #[from]
         source: std::io::Error,
     },
+    #[error("Invalid OSD file")]
+    InvalidFile,
+    #[error("No frames found in OSD file")]
+    NoFrames,
 }

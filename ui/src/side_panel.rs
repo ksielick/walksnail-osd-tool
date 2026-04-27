@@ -52,7 +52,12 @@ impl WalksnailOsdTool {
                                 });
                                 row.col(|ui| {
                                     if let Some(video_file) = &self.video_file {
-                                        ui.label(video_file.file_name().unwrap().to_string_lossy());
+                                        ui.label(
+                                            video_file
+                                                .file_name()
+                                                .unwrap_or_default()
+                                                .to_string_lossy(),
+                                        );
                                     } else {
                                         ui.label("-");
                                     }
@@ -161,7 +166,13 @@ impl WalksnailOsdTool {
                                 });
                                 row.col(|ui| {
                                     if let Some(osd_file) = osd_file {
-                                        ui.label(osd_file.fc_firmware.to_string());
+                                        let fw = osd_file.fc_firmware.to_string();
+                                        if osd_file.fc_firmware == backend::osd::FcFirmware::Unknown {
+                                            ui.label(RichText::new(format!("{fw} !")).color(Color32::RED))
+                                                .on_hover_text("FC firmware could not be detected. Auto-selection of fonts may not work correctly.");
+                                        } else {
+                                            ui.label(fw);
+                                        }
                                     } else {
                                         ui.label("-");
                                     }
@@ -174,7 +185,12 @@ impl WalksnailOsdTool {
                                 });
                                 row.col(|ui| {
                                     if let Some(osd_file) = osd_file {
-                                        ui.label(osd_file.frame_count.to_string());
+                                        if osd_file.is_empty() {
+                                            ui.label(RichText::new(format!("{} (Empty/Corrupted !)", osd_file.frame_count)).color(Color32::RED))
+                                                .on_hover_text("This OSD file contains no visible data (all frames are empty). It might be corrupted or the VTX failed to record OSD data.");
+                                        } else {
+                                            ui.label(osd_file.frame_count.to_string());
+                                        }
                                     } else {
                                         ui.label("-");
                                     }

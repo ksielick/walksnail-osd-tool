@@ -99,15 +99,17 @@ impl WalksnailOsdTool {
                                         .frames
                                         .get(self.osd_preview.preview_frame as usize - 1)
                                         .unwrap();
-                                    #[allow(clippy::cast_possible_wrap)]
-                                    let min_y = frame.glyphs.iter().map(|g| g.grid_position.y).min().unwrap() as i32;
-                                    #[allow(clippy::cast_possible_wrap)]
-                                    let max_y = frame.glyphs.iter().map(|g| g.grid_position.y).max().unwrap() as i32;
-                                    let pixel_range = (max_y - min_y + 1) * scaled_char_height;
-                                    #[allow(clippy::cast_possible_wrap)]
-                                    let y_pos = (video_info.height as i32 - pixel_range) / 2 - min_y * scaled_char_height;
-                                    self.osd_options.position.y = y_pos;
-                                    changed |= true;
+                                    if !frame.glyphs.is_empty() {
+                                        #[allow(clippy::cast_possible_wrap)]
+                                        let min_y = frame.glyphs.iter().map(|g| g.grid_position.y).min().unwrap() as i32;
+                                        #[allow(clippy::cast_possible_wrap)]
+                                        let max_y = frame.glyphs.iter().map(|g| g.grid_position.y).max().unwrap() as i32;
+                                        let pixel_range = (max_y - min_y + 1) * scaled_char_height;
+                                        #[allow(clippy::cast_possible_wrap)]
+                                        let y_pos = (video_info.height as i32 - pixel_range) / 2 - min_y * scaled_char_height;
+                                        self.osd_options.position.y = y_pos;
+                                        changed |= true;
+                                    }
                                 }
                             }
 
@@ -470,18 +472,19 @@ impl WalksnailOsdTool {
                                 },
                             );
                             if selection.changed() {
-                                // This is a little hacky but it's nice to have a single struct that keeps track of all render settings
-                                self.render_settings.encoder =
-                                    (*selectable_encoders.get(self.render_settings.selected_encoder_idx).unwrap()).clone();
-                                changed |= true;
+                                if let Some(encoder) = selectable_encoders.get(self.render_settings.selected_encoder_idx) {
+                                    self.render_settings.encoder = (*encoder).clone();
+                                    changed |= true;
+                                }
                             }
 
                             if ui
                                 .add(Checkbox::without_text(&mut self.render_settings.show_undetected_encoders))
                                 .changed() {
                                     self.render_settings.selected_encoder_idx = 0;
-                                    self.render_settings.encoder =
-                                        (*selectable_encoders.first().unwrap()).clone();
+                                    if let Some(encoder) = selectable_encoders.first() {
+                                        self.render_settings.encoder = (*encoder).clone();
+                                    }
                                     changed |= true;
                             }
                         });
@@ -563,14 +566,16 @@ impl WalksnailOsdTool {
                 .frames
                 .get(self.osd_preview.preview_frame as usize - 1)
                 .unwrap();
-            #[allow(clippy::cast_possible_wrap)]
-            let min_x = frame.glyphs.iter().map(|g| g.grid_position.x).min().unwrap() as i32;
-            #[allow(clippy::cast_possible_wrap)]
-            let max_x = frame.glyphs.iter().map(|g| g.grid_position.x).max().unwrap() as i32;
-            let pixel_range = (max_x - min_x + 1) * scaled_char_width;
-            #[allow(clippy::cast_possible_wrap)]
-            let x_pos = (video_info.width as i32 - pixel_range) / 2 - min_x * scaled_char_width;
-            self.osd_options.position.x = x_pos;
+            if !frame.glyphs.is_empty() {
+                #[allow(clippy::cast_possible_wrap)]
+                let min_x = frame.glyphs.iter().map(|g| g.grid_position.x).min().unwrap() as i32;
+                #[allow(clippy::cast_possible_wrap)]
+                let max_x = frame.glyphs.iter().map(|g| g.grid_position.x).max().unwrap() as i32;
+                let pixel_range = (max_x - min_x + 1) * scaled_char_width;
+                #[allow(clippy::cast_possible_wrap)]
+                let x_pos = (video_info.width as i32 - pixel_range) / 2 - min_x * scaled_char_width;
+                self.osd_options.position.x = x_pos;
+            }
         }
     }
 }
