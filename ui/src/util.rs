@@ -73,10 +73,16 @@ impl WalksnailOsdTool {
             // Try to load the matching OSD and SRT files
             let video_duration = self.video_info.as_ref().map(|v| v.duration);
             let mut osd_to_import = find_matching_file_with_extension(video_file, "osd", video_duration);
-            if let (Some(old_video), Some(old_osd)) = (old_video_file.clone(), self.osd_file.as_ref().map(|o| o.file_path.clone())) {
+            if let (Some(old_video), Some(old_osd)) = (
+                old_video_file.clone(),
+                self.osd_file.as_ref().map(|o| o.file_path.clone()),
+            ) {
                 if old_video.file_stem() != old_osd.file_stem() {
                     if let Some(next_osd) = find_next_osd_file(&old_osd) {
-                        tracing::info!("Differently named video/OSD pair detected, loading next OSD in sequence: {:?}", next_osd);
+                        tracing::info!(
+                            "Differently named video/OSD pair detected, loading next OSD in sequence: {:?}",
+                            next_osd
+                        );
                         osd_to_import = Some(next_osd);
                     }
                 }
@@ -273,9 +279,7 @@ pub fn find_matching_file_with_extension(
         let files: Vec<PathBuf> = entries
             .flatten()
             .map(|e| e.path())
-            .filter(|p| {
-                p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension))
-            })
+            .filter(|p| p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension)))
             .collect();
 
         if files.is_empty() {
@@ -331,9 +335,7 @@ fn find_next_file_with_extension(current_file: &Path, extension: &str) -> Option
             let mut files: Vec<PathBuf> = entries
                 .flatten()
                 .map(|e| e.path())
-                .filter(|p| {
-                    p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension))
-                })
+                .filter(|p| p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension)))
                 .collect();
             files.sort();
 
@@ -483,7 +485,11 @@ pub fn get_dependency_path(dependency: &str) -> PathBuf {
         // +-- ffmpeg
         //     +-- ffmpeg.exe
         //     +-- ffprobe.exe
-        exe_dir.parent().unwrap_or(Path::new("")).join("ffmpeg").join(dependency)
+        exe_dir
+            .parent()
+            .unwrap_or(Path::new(""))
+            .join("ffmpeg")
+            .join(dependency)
     } else {
         dependency.into()
     }

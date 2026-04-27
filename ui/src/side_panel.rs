@@ -52,12 +52,7 @@ impl WalksnailOsdTool {
                                 });
                                 row.col(|ui| {
                                     if let Some(video_file) = &self.video_file {
-                                        ui.label(
-                                            video_file
-                                                .file_name()
-                                                .unwrap_or_default()
-                                                .to_string_lossy(),
-                                        );
+                                        ui.label(video_file.file_name().unwrap_or_default().to_string_lossy());
                                     } else {
                                         ui.label("-");
                                     }

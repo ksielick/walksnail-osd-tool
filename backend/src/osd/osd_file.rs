@@ -130,7 +130,7 @@ impl OsdFile {
         fs::write(&self.file_path, bytes)?;
         Ok(())
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.frames.iter().all(|f| f.glyphs.iter().all(|g| g.index == 0))
     }
