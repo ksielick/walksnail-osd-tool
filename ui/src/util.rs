@@ -71,9 +71,20 @@ impl WalksnailOsdTool {
             }
 
             // Try to load the matching OSD and SRT files
-            self.import_osd_file(&[matching_file_with_extension(video_file, "osd")]);
+            let mut osd_to_import = find_matching_file_with_extension(video_file, "osd");
+            if let (Some(old_video), Some(old_osd)) = (old_video_file.clone(), self.osd_file.as_ref().map(|o| o.file_path.clone())) {
+                if old_video.file_stem() != old_osd.file_stem() {
+                    if let Some(next_osd) = find_next_osd_file(&old_osd) {
+                        tracing::info!("Differently named video/OSD pair detected, loading next OSD in sequence: {:?}", next_osd);
+                        osd_to_import = Some(next_osd);
+                    }
+                }
+            }
+            if let Some(osd_to_import) = osd_to_import {
+                self.import_osd_file(&[osd_to_import]);
+            }
 
-            let mut srt_to_import = matching_file_with_extension(video_file, "srt");
+            let mut srt_to_import = find_matching_file_with_extension(video_file, "srt");
             if let (Some(old_video), Some(old_srt)) = (old_video_file, old_srt_file) {
                 if old_video.file_stem() != old_srt.file_stem() {
                     if let Some(next_srt) = find_next_srt_file(&old_srt) {
@@ -81,11 +92,13 @@ impl WalksnailOsdTool {
                             "Differently named video/SRT pair detected, loading next SRT in sequence: {:?}",
                             next_srt
                         );
-                        srt_to_import = next_srt;
+                        srt_to_import = Some(next_srt);
                     }
                 }
             }
-            self.import_srt_file(&[srt_to_import]);
+            if let Some(srt_to_import) = srt_to_import {
+                self.import_srt_file(&[srt_to_import]);
+            }
 
             // Check if duration matches
             if let (Some(video_info), Some(srt_file)) = (&self.video_info, &self.srt_file) {
@@ -241,25 +254,54 @@ pub fn filter_file_with_extention<'a>(files: &'a [PathBuf], extention: &'a str) 
 }
 
 #[tracing::instrument(ret, level = "info")]
-pub fn matching_file_with_extension(path: &PathBuf, extention: &str) -> PathBuf {
+pub fn find_matching_file_with_extension(path: &PathBuf, extension: &str) -> Option<PathBuf> {
     let file_name = path.file_stem().unwrap_or_default();
-    let parent = path.parent().unwrap_or(Path::new(""));
-    parent.join(file_name).with_extension(extention)
+    let parent = path.parent().unwrap_or_else(|| Path::new(""));
+    let direct_match = parent.join(file_name).with_extension(extension);
+
+    if direct_match.exists() {
+        return Some(direct_match);
+    }
+
+    // Fallback: search for the first file with the same extension in the same directory
+    if let Ok(entries) = std::fs::read_dir(parent) {
+        let mut files: Vec<PathBuf> = entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension))
+            })
+            .collect();
+        files.sort();
+        return files.first().cloned();
+    }
+
+    None
 }
 
 pub fn find_next_srt_file(current_srt: &Path) -> Option<PathBuf> {
-    if let Some(parent) = current_srt.parent() {
+    find_next_file_with_extension(current_srt, "srt")
+}
+
+pub fn find_next_osd_file(current_osd: &Path) -> Option<PathBuf> {
+    find_next_file_with_extension(current_osd, "osd")
+}
+
+fn find_next_file_with_extension(current_file: &Path, extension: &str) -> Option<PathBuf> {
+    if let Some(parent) = current_file.parent() {
         if let Ok(entries) = std::fs::read_dir(parent) {
-            let mut srt_files: Vec<PathBuf> = entries
+            let mut files: Vec<PathBuf> = entries
                 .flatten()
                 .map(|e| e.path())
-                .filter(|p| p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("srt")))
+                .filter(|p| {
+                    p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case(extension))
+                })
                 .collect();
-            srt_files.sort();
+            files.sort();
 
-            if let Some(idx) = srt_files.iter().position(|p| p == current_srt) {
-                if idx + 1 < srt_files.len() {
-                    return Some(srt_files[idx + 1].clone());
+            if let Some(idx) = files.iter().position(|p| p == current_file) {
+                if idx + 1 < files.len() {
+                    return Some(files[idx + 1].clone());
                 }
             }
         }
