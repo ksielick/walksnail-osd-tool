@@ -39,7 +39,7 @@ pub fn start_video_render(
     output_video: &PathBuf,
     osd_frames: Vec<osd::Frame>,
     srt_frames: Vec<srt::SrtFrame>,
-    font_file: font::FontFile,
+    font_file: Option<font::FontFile>,
     srt_font: rusttype::Font<'static>,
     osd_options: &OsdOptions,
     srt_options: &SrtOptions,
@@ -134,14 +134,18 @@ pub fn start_video_render(
                             video_frame.width = final_width;
                         }
 
-                        overlay_osd_cached(
-                            &mut frame_image,
-                            &render_data.osd_frame,
-                            &font_file,
-                            &osd_options,
-                            (x_offset as i32, 0),
-                            glyph_cache,
-                        );
+                        if let Some(osd_frame) = &render_data.osd_frame {
+                            if let Some(font) = &*font_file {
+                                overlay_osd_cached(
+                                    &mut frame_image,
+                                    osd_frame,
+                                    font,
+                                    &osd_options,
+                                    (x_offset as i32, 0),
+                                    glyph_cache,
+                                );
+                            }
+                        }
 
                         if let Some(current_srt_frame) = &render_data.srt_frame {
                             if let Some(srt_data) = &current_srt_frame.data {

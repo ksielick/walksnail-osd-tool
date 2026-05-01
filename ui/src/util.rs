@@ -24,7 +24,13 @@ use crate::util::build_info::Build;
 impl WalksnailOsdTool {
     #[must_use]
     pub const fn all_files_loaded(&self) -> bool {
-        self.video_loaded() && self.osd_loaded() && self.font_loaded()
+        if !self.video_loaded() || self.artlynk_extraction_promise.is_some() {
+            return false;
+        }
+        if self.osd_loaded() && !self.font_loaded() {
+            return false;
+        }
+        self.osd_loaded() || self.srt_file.is_some()
     }
 
     #[must_use]
@@ -51,6 +57,7 @@ impl WalksnailOsdTool {
         self.pending_batch_render = false;
         if let Some(video_file) = filter_file_with_extention(file_handles, "mp4") {
             let old_video_file = self.video_file.clone();
+            let old_osd_file = self.osd_file.as_ref().map(|o| o.file_path.clone());
             let old_srt_file = self.srt_file.as_ref().map(|s| s.file_path.clone());
 
             self.video_file = Some(video_file.clone());
@@ -73,10 +80,7 @@ impl WalksnailOsdTool {
             // Try to load the matching OSD and SRT files
             let video_duration = self.video_info.as_ref().map(|v| v.duration);
             let mut osd_to_import = find_matching_file_with_extension(video_file, "osd", video_duration);
-            if let (Some(old_video), Some(old_osd)) = (
-                old_video_file.clone(),
-                self.osd_file.as_ref().map(|o| o.file_path.clone()),
-            ) {
+            if let (Some(old_video), Some(old_osd)) = (old_video_file.clone(), old_osd_file) {
                 if old_video.file_stem() != old_osd.file_stem() {
                     if let Some(next_osd) = find_next_osd_file(&old_osd) {
                         tracing::info!(
@@ -124,7 +128,22 @@ impl WalksnailOsdTool {
             self.auto_select_font();
 
             // If no .osd file was loaded, try Artlynk extraction from video SEI data
-            if self.osd_file.is_none() {
+            // For Artlynk, we also trigger extraction if the loaded OSD file doesn't match the video name exactly
+            // (prevents batch processing from reusing the previous video's OSD file via fallback matching)
+            let is_artlynk = self
+                .srt_file
+                .as_ref()
+                .is_some_and(|s| s.srt_type == backend::srt::SrtType::Artlynk);
+            let osd_matches_video = self
+                .osd_file
+                .as_ref()
+                .is_some_and(|o| o.file_path.file_stem() == video_file.file_stem());
+
+            if self.osd_file.is_none() || (is_artlynk && !osd_matches_video) {
+                if is_artlynk && !osd_matches_video {
+                    tracing::info!("Artlynk detected: Clearing mismatched OSD file and triggering extraction.");
+                    self.osd_file = None;
+                }
                 let ffmpeg_path = self.dependencies.ffmpeg_path.clone();
                 let video_path = video_file.clone();
 
@@ -166,7 +185,7 @@ impl WalksnailOsdTool {
     pub fn import_srt_file(&mut self, file_handles: &[PathBuf]) {
         if let Some(srt_file_path) = filter_file_with_extention(file_handles, "srt") {
             self.srt_file = SrtFile::open(srt_file_path.clone()).ok();
-            
+
             if let Some(srt_file) = &self.srt_file {
                 if let Some(profile) = self.srt_profiles.get(&srt_file.srt_type) {
                     tracing::info!("Applying SRT profile for {}", srt_file.srt_type);
@@ -195,6 +214,14 @@ impl WalksnailOsdTool {
         if let Some(font_file_path) = filter_file_with_extention(file_handles, "png") {
             self.font_file = FontFile::open(font_file_path.clone()).ok();
             self.font_manually_selected = true;
+
+            if let Some(osd_file) = &self.osd_file {
+                let srt_type = self.srt_file.as_ref().map(|s| s.srt_type);
+                let profile_key = (osd_file.fc_firmware.clone(), srt_type);
+                self.font_profiles
+                    .insert(profile_key, font_file_path.to_string_lossy().to_string());
+            }
+
             self.config_changed = Some(Instant::now());
         }
     }
@@ -202,6 +229,22 @@ impl WalksnailOsdTool {
     pub fn auto_select_font(&mut self) {
         if let (Some(video_info), Some(osd_file)) = (&self.video_info, &self.osd_file) {
             let character_size = backend::overlay::get_character_size(video_info.width, video_info.height);
+            let srt_type = self.srt_file.as_ref().map(|s| s.srt_type);
+            let profile_key = (osd_file.fc_firmware.clone(), srt_type);
+
+            if let Some(saved_path_str) = self.font_profiles.get(&profile_key) {
+                let saved_path = PathBuf::from(saved_path_str);
+                if self.font_file.as_ref().is_none_or(|f| f.file_path != saved_path) {
+                    if let Ok(font) = FontFile::open(saved_path.clone()) {
+                        tracing::info!("Applying saved font profile for {:?}: {:?}", profile_key, saved_path);
+                        self.font_file = Some(font);
+                        self.font_manually_selected = true;
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
 
             // Only auto-select if no font loaded, or the current font is not a good match.
             // If the user manually selected a font, we only change it if the resolution is incompatible.
@@ -213,16 +256,44 @@ impl WalksnailOsdTool {
                 Some(f) => {
                     if self.font_manually_selected {
                         let size_mismatch = f.character_size != character_size;
-                        if size_mismatch {
+
+                        let file_name = f
+                            .file_path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_uppercase())
+                            .unwrap_or_default();
+                        let is_firmware_match = match &osd_file.fc_firmware {
+                            backend::osd::FcFirmware::Betaflight
+                            | backend::osd::FcFirmware::Kiss
+                            | backend::osd::FcFirmware::KissUltra => {
+                                file_name.starts_with("WS_BTFL_")
+                                    || file_name.starts_with("WS_BFX4_")
+                                    || file_name.starts_with("BF_")
+                                    || file_name.starts_with("FONT_")
+                            }
+                            backend::osd::FcFirmware::Inav => {
+                                file_name.starts_with("WS_INAV_")
+                                    || file_name.starts_with("WS_INAV9_")
+                                    || file_name.starts_with("INAV_")
+                            }
+                            backend::osd::FcFirmware::ArduPilot => {
+                                file_name.starts_with("WS_ARDU_") || file_name.starts_with("ARDU_")
+                            }
+                            _ => true,
+                        };
+                        let firmware_mismatch = !is_firmware_match;
+                        let mismatch = size_mismatch || firmware_mismatch;
+
+                        if mismatch {
                             tracing::info!(
-                                "Auto-select: Manual font loaded but size mismatch ({:?} != {:?}), setting should_auto_select = true",
-                                f.character_size,
-                                character_size
+                                "Auto-select: Manual font loaded but mismatch (size_mismatch: {}, firmware_mismatch: {}), setting should_auto_select = true",
+                                size_mismatch,
+                                firmware_mismatch
                             );
                         } else {
-                            tracing::info!("Auto-select: Manual font loaded and size matches, skipping auto-selection");
+                            tracing::info!("Auto-select: Manual font loaded and matches, skipping auto-selection");
                         }
-                        size_mismatch
+                        mismatch
                     } else {
                         tracing::info!(
                             "Auto-select: Auto-selected font loaded, allowing re-selection for better match"
@@ -432,6 +503,7 @@ impl Into<AppConfig> for &mut WalksnailOsdTool {
             osd_options: self.osd_options.clone(),
             srt_options: self.srt_options.clone(),
             srt_profiles: self.srt_profiles.clone(),
+            font_profiles: self.font_profiles.clone(),
             render_options: self.render_settings.clone(),
             app_update: backend::util::AppUpdate {
                 check_on_startup: self.app_update.check_on_startup,

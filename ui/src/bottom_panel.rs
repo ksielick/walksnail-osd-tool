@@ -24,7 +24,7 @@ impl WalksnailOsdTool {
                     self.all_files_loaded(),
                     Button::new("Start render").min_size(button_size),
                 )
-                .on_disabled_hover_text("First load video, OSD, SRT and font files")
+                .on_disabled_hover_text("Load a video file and at least one subtitle source (OSD + Font, or SRT)")
                 .clicked()
             {
                 tracing::info!("Start render button clicked");

@@ -123,9 +123,10 @@ impl WalksnailOsdTool {
                         ui.label("Mask")
                             .on_hover_text(tooltip_text("Click edit to select OSD elements on the preview that should not be rendered on the video. This can be useful to hide GPS coordinates, etc."));
                         ui.horizontal(|ui| {
-                            let txt = if !self.osd_preview.mask_edit_mode_enabled || !self.all_files_loaded() {"Edit"} else {"Save"};
-                            if ui.add_enabled(self.all_files_loaded(), Button::new(txt))
-                                .on_disabled_hover_text(tooltip_text("First load the input files")).clicked() {
+                            let can_edit_mask = self.osd_loaded() && self.font_loaded();
+                            let txt = if !self.osd_preview.mask_edit_mode_enabled || !can_edit_mask {"Edit"} else {"Save"};
+                            if ui.add_enabled(can_edit_mask, Button::new(txt))
+                                .on_disabled_hover_text(tooltip_text("First load the OSD and Font files")).clicked() {
                                 self.osd_preview.mask_edit_mode_enabled = !self.osd_preview.mask_edit_mode_enabled;
                             }
                             if ui.button("Reset").clicked() {
@@ -226,7 +227,7 @@ impl WalksnailOsdTool {
                                 "Select data from the SRT file to be rendered on the video.",
                             ));
                             if let Some(srt_file) = &self.srt_file {
-                                ui.label(RichText::new(srt_file.srt_type.to_string()).color(Color32::LIGHT_BLUE));
+                                ui.label(srt_file.srt_type.to_string());
                             }
                         });
                         let options = &mut self.srt_options;
@@ -360,7 +361,10 @@ impl WalksnailOsdTool {
                         let preview_frame_slider = ui.add(
                             Slider::new(
                                 &mut self.osd_preview.preview_frame,
-                                1..=self.osd_file.as_ref().map_or(1, |f| f.frame_count),
+                                1..=self.osd_file.as_ref().map_or_else(
+                                    || self.srt_file.as_ref().map_or(1, |f| f.frames.len() as u32),
+                                    |f| f.frame_count,
+                                ),
                             )
                             .smart_aim(false),
                         );
@@ -573,16 +577,19 @@ impl WalksnailOsdTool {
             let frame = osd_file
                 .frames
                 .get(self.osd_preview.preview_frame as usize - 1)
-                .unwrap();
-            if !frame.glyphs.is_empty() {
-                #[allow(clippy::cast_possible_wrap)]
-                let min_x = frame.glyphs.iter().map(|g| g.grid_position.x).min().unwrap() as i32;
-                #[allow(clippy::cast_possible_wrap)]
-                let max_x = frame.glyphs.iter().map(|g| g.grid_position.x).max().unwrap() as i32;
-                let pixel_range = (max_x - min_x + 1) * scaled_char_width;
-                #[allow(clippy::cast_possible_wrap)]
-                let x_pos = (video_info.width as i32 - pixel_range) / 2 - min_x * scaled_char_width;
-                self.osd_options.position.x = x_pos;
+                .or_else(|| osd_file.frames.first());
+
+            if let Some(frame) = frame {
+                if !frame.glyphs.is_empty() {
+                    #[allow(clippy::cast_possible_wrap)]
+                    let min_x = frame.glyphs.iter().map(|g| g.grid_position.x).min().unwrap() as i32;
+                    #[allow(clippy::cast_possible_wrap)]
+                    let max_x = frame.glyphs.iter().map(|g| g.grid_position.x).max().unwrap() as i32;
+                    let pixel_range = (max_x - min_x + 1) * scaled_char_width;
+                    #[allow(clippy::cast_possible_wrap)]
+                    let x_pos = (video_info.width as i32 - pixel_range) / 2 - min_x * scaled_char_width;
+                    self.osd_options.position.x = x_pos;
+                }
             }
         }
     }

@@ -63,19 +63,19 @@ pub fn overlay_srt_data(
 
     if srt_options.show_hz {
         if let Some(hz) = srt_data.hz {
-            segments.push(format!("Hz:{hz}"));
+            segments.push(format!("Hz:{hz: >7}"));
         }
     }
 
     if srt_options.show_sp {
         if let Some(sp) = srt_data.sp {
-            segments.push(format!("Sp:{sp}"));
+            segments.push(format!("Sp:{sp: >2}"));
         }
     }
 
     if srt_options.show_gp {
         if let Some(gp) = srt_data.gp {
-            segments.push(format!("Gp:{gp}"));
+            segments.push(format!("Gp:{gp: >2}"));
         }
     }
 
@@ -93,37 +93,37 @@ pub fn overlay_srt_data(
 
     if srt_options.show_stemp {
         if let Some(temp) = srt_data.stemp {
-            segments.push(format!("Stemp:{temp}"));
+            segments.push(format!("Stemp:{temp: >3}"));
         }
     }
 
     if srt_options.show_gtemp {
         if let Some(temp) = srt_data.gtemp {
-            segments.push(format!("Gtemp:{temp}"));
+            segments.push(format!("Gtemp:{temp: >3}"));
         }
     }
 
     if srt_options.show_ssnr {
         if let Some(ssnr) = srt_data.ssnr {
-            segments.push(format!("SSNR:{ssnr}"));
+            segments.push(format!("SSNR:{ssnr: >4.1}"));
         }
     }
 
     if srt_options.show_gsnr {
         if let Some(gsnr) = srt_data.gsnr {
-            segments.push(format!("GSNR:{gsnr}"));
+            segments.push(format!("GSNR:{gsnr: >4.1}"));
         }
     }
 
     if srt_options.show_serr {
         if let Some(serr) = srt_data.serr {
-            segments.push(format!("Serr:{serr}"));
+            segments.push(format!("Serr:{serr: >3}"));
         }
     }
 
     if srt_options.show_gerr {
         if let Some(gerr) = srt_data.gerr {
-            segments.push(format!("Gerr:{gerr}"));
+            segments.push(format!("Gerr:{gerr: >3}"));
         }
     }
 

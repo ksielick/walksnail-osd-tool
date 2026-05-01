@@ -45,6 +45,7 @@ pub struct WalksnailOsdTool {
     pub osd_options: OsdOptions,
     pub srt_options: SrtOptions,
     pub srt_profiles: std::collections::HashMap<backend::srt::SrtType, SrtOptions>,
+    pub font_profiles: std::collections::HashMap<(backend::osd::FcFirmware, Option<backend::srt::SrtType>), String>,
     pub srt_font: Option<rusttype::Font<'static>>,
     pub about_window_open: bool,
     pub dark_mode: bool,
@@ -81,6 +82,7 @@ impl WalksnailOsdTool {
 
         let srt_options = saved_settings.srt_options.clone();
         let srt_profiles = saved_settings.srt_profiles.clone();
+        let font_profiles = saved_settings.font_profiles.clone();
         let osd_options = saved_settings.osd_options;
 
         // Load last used font file
@@ -109,6 +111,7 @@ impl WalksnailOsdTool {
             osd_options,
             srt_options,
             srt_profiles,
+            font_profiles,
             font_file,
             render_settings,
             app_update,
@@ -242,40 +245,53 @@ impl WalksnailOsdTool {
     }
 
     pub fn update_osd_preview(&mut self, ctx: &egui::Context) {
-        if let (Some(video_info), Some(osd_file), Some(font_file)) = (&self.video_info, &self.osd_file, &self.font_file)
-        {
-            let osd_frame = if let Some(frame) = osd_file.frames.get(self.osd_preview.preview_frame as usize - 1) {
-                frame
-            } else if let Some(frame) = osd_file.frames.first() {
-                frame
-            } else {
-                return;
-            };
-            #[allow(clippy::cast_precision_loss)]
-            let timestamp = osd_frame.time_millis as f32 / 1000.0;
+        if let Some(video_info) = &self.video_info {
+            let osd_frame = self.osd_file.as_ref().and_then(|osd_file| {
+                if let Some(frame) = osd_file.frames.get(self.osd_preview.preview_frame as usize - 1) {
+                    Some(frame)
+                } else if let Some(frame) = osd_file.frames.first() {
+                    Some(frame)
+                } else {
+                    None
+                }
+            });
 
-            let srt_frame = self.srt_file.as_ref().map(|srt_file| {
-                srt_file
-                    .frames
-                    .iter()
-                    .find(|f| f.start_time_secs <= timestamp && f.end_time_secs >= timestamp)
-                    .unwrap_or_else(|| {
+            let srt_frame = self.srt_file.as_ref().and_then(|srt_file| {
+                if self.osd_file.is_some() {
+                    if let Some(o_frame) = osd_frame {
+                        #[allow(clippy::cast_precision_loss)]
+                        let timestamp = o_frame.time_millis as f32 / 1000.0;
                         srt_file
                             .frames
                             .iter()
-                            .rfind(|f| f.start_time_secs <= timestamp)
-                            .unwrap_or_else(|| {
-                                srt_file.frames.first().unwrap() // Safe because SrtFile::open ensures at least one frame
-                            })
-                    })
+                            .find(|f| f.start_time_secs <= timestamp && f.end_time_secs >= timestamp)
+                            .or_else(|| srt_file.frames.iter().rfind(|f| f.start_time_secs <= timestamp))
+                            .or_else(|| srt_file.frames.first())
+                    } else {
+                        None
+                    }
+                } else {
+                    if let Some(frame) = srt_file.frames.get(self.osd_preview.preview_frame as usize - 1) {
+                        Some(frame)
+                    } else if let Some(frame) = srt_file.frames.first() {
+                        Some(frame)
+                    } else {
+                        None
+                    }
+                }
             });
+
+            if osd_frame.is_none() && srt_frame.is_none() {
+                self.osd_preview.texture_handle = None;
+                return;
+            }
 
             let osd_preview_image = create_osd_preview(
                 video_info.width,
                 video_info.height,
                 osd_frame,
                 srt_frame,
-                font_file,
+                self.font_file.as_ref(),
                 self.srt_font.as_ref().unwrap(),
                 &self.osd_options,
                 &self.srt_options,
@@ -336,43 +352,45 @@ impl WalksnailOsdTool {
     }
 
     fn poll_artlynk_extraction(&mut self, ctx: &egui::Context) {
-        if let Some(promise) = &self.artlynk_extraction_promise {
-            let ready_result: Option<&Result<Option<OsdFile>, OsdFileError>> = promise.ready();
-            if let Some(result) = ready_result {
-                match result {
-                    Ok(Some(osd_file)) => {
-                        tracing::info!(
-                            "Artlynk OSD extraction finished. Found {} frames.",
-                            osd_file.frame_count
-                        );
-                        self.osd_file = Some(osd_file.clone());
-                        self.osd_preview.preview_frame = 1;
+        let is_ready = self
+            .artlynk_extraction_promise
+            .as_ref()
+            .is_some_and(|p| p.ready().is_some());
+        if is_ready {
+            let promise = self.artlynk_extraction_promise.take().unwrap();
+            let result = promise.block_and_take();
+            match result {
+                Ok(Some(osd_file)) => {
+                    tracing::info!(
+                        "Artlynk OSD extraction finished. Found {} frames.",
+                        osd_file.frame_count
+                    );
+                    self.osd_file = Some(osd_file.clone());
+                    self.osd_preview.preview_frame = 1;
 
-                        // After extraction, we need to re-trigger auto-selections that depend on OSD data
-                        self.auto_select_font();
-                        self.auto_center_horizontal();
+                    // After extraction, we need to re-trigger auto-selections that depend on OSD data
+                    self.auto_select_font();
+                    self.auto_center_horizontal();
 
-                        self.update_osd_preview(ctx);
-                        self.auto_resize_window(ctx);
+                    self.update_osd_preview(ctx);
+                    self.auto_resize_window(ctx);
 
-                        if self.batch_processing && self.pending_batch_render && self.all_files_loaded() {
-                            tracing::info!("Artlynk extraction finished, starting queued batch render.");
-                            self.pending_batch_render = false;
-                            self.start_render_process();
-                        } else {
-                            self.pending_batch_render = false;
-                        }
-                    }
-                    Ok(None) => {
-                        tracing::info!("Artlynk OSD extraction finished. No OSD data found.");
+                    if self.batch_processing && self.pending_batch_render && self.all_files_loaded() {
+                        tracing::info!("Artlynk extraction finished, starting queued batch render.");
                         self.pending_batch_render = false;
-                    }
-                    Err(e) => {
-                        tracing::error!("Artlynk OSD extraction failed: {}", e);
+                        self.start_render_process();
+                    } else {
                         self.pending_batch_render = false;
                     }
                 }
-                self.artlynk_extraction_promise = None;
+                Ok(None) => {
+                    tracing::info!("Artlynk OSD extraction finished. No OSD data found.");
+                    self.pending_batch_render = false;
+                }
+                Err(e) => {
+                    tracing::error!("Artlynk OSD extraction failed: {}", e);
+                    self.pending_batch_render = false;
+                }
             }
         }
     }
@@ -466,13 +484,15 @@ impl WalksnailOsdTool {
     pub fn start_render_process(&mut self) {
         tracing::info!("Starting render process");
         self.render_status.start_render();
-        if let (Some(video_path), Some(osd_file), Some(font_file), Some(video_info)) =
-            (&self.video_file, &self.osd_file, &self.font_file, &self.video_info)
-        {
+        if let (Some(video_path), Some(video_info)) = (&self.video_file, &self.video_info) {
             self.osd_options.osd_playback_speed_factor = if self.osd_options.adjust_playback_speed {
-                let video_duration = video_info.duration;
-                let osd_duration = osd_file.duration;
-                video_duration.as_secs_f32() / osd_duration.as_secs_f32()
+                if let Some(osd_file) = &self.osd_file {
+                    let video_duration = video_info.duration;
+                    let osd_duration = osd_file.duration;
+                    video_duration.as_secs_f32() / osd_duration.as_secs_f32()
+                } else {
+                    1.0
+                }
             } else {
                 1.0
             };
@@ -480,9 +500,9 @@ impl WalksnailOsdTool {
                 &self.dependencies.ffmpeg_path,
                 video_path,
                 &crate::util::get_output_video_path(video_path),
-                osd_file.frames.clone(),
+                self.osd_file.as_ref().map(|o| o.frames.clone()).unwrap_or_default(),
                 self.srt_file.as_ref().map(|s| s.frames.clone()).unwrap_or_default(),
-                font_file.clone(),
+                self.font_file.clone(),
                 self.srt_font.as_ref().unwrap().clone(),
                 &self.osd_options,
                 &self.srt_options,

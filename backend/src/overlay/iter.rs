@@ -15,7 +15,7 @@ use crate::{
 #[allow(clippy::struct_field_names)]
 pub struct FrameRenderData {
     pub video_frame: OutputVideoFrame,
-    pub osd_frame: osd::Frame,
+    pub osd_frame: Option<osd::Frame>,
     pub srt_frame: Option<srt::SrtFrame>,
 }
 
@@ -25,7 +25,7 @@ pub struct FrameOverlayIter {
     osd_frames_iter: Peekable<IntoIter<osd::Frame>>,
     srt_frames_iter: Peekable<IntoIter<srt::SrtFrame>>,
     osd_playback_speed_factor: f32,
-    current_osd_frame: osd::Frame,
+    current_osd_frame: Option<osd::Frame>,
     current_srt_frame: Option<srt::SrtFrame>,
     ffmpeg_sender: Sender<FromFfmpegMessage>,
     ffmpeg_receiver: Receiver<ToFfmpegMessage>,
@@ -44,7 +44,7 @@ impl FrameOverlayIter {
     ) -> Self {
         let mut osd_frames_iter = osd_frames.into_iter();
         let mut srt_frames_iter = srt_frames.into_iter();
-        let first_osd_frame = osd_frames_iter.next().unwrap();
+        let first_osd_frame = osd_frames_iter.next();
         let first_srt_frame = srt_frames_iter.next();
         Self {
             decoder_iter,
@@ -78,7 +78,7 @@ impl Iterator for FrameOverlayIter {
                     #[allow(clippy::cast_precision_loss)]
                     let next_osd_frame_secs = next_osd_frame.time_millis as f32 / 1000.0;
                     if video_frame.timestamp > next_osd_frame_secs * self.osd_playback_speed_factor {
-                        self.current_osd_frame = self.osd_frames_iter.next().unwrap();
+                        self.current_osd_frame = self.osd_frames_iter.next();
                     }
                 }
 

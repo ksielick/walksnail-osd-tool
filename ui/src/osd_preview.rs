@@ -11,9 +11,9 @@ use image::RgbaImage;
 pub fn create_osd_preview(
     width: u32,
     height: u32,
-    osd_frame: &osd::Frame,
+    osd_frame: Option<&osd::Frame>,
     srt_frame: Option<&srt::SrtFrame>,
-    font: &font::FontFile,
+    font: Option<&font::FontFile>,
     srt_font: &rusttype::Font,
     osd_options: &OsdOptions,
     srt_options: &SrtOptions,
@@ -46,7 +46,9 @@ pub fn create_osd_preview(
     // But Render is usually on top of video.
     // For preview, we just want to ensure OSD/SRT are positioned correctly.
 
-    overlay_osd(&mut image, osd_frame, font, osd_options, (x_offset as i32, 0));
+    if let (Some(osd_frame), Some(font)) = (osd_frame, font) {
+        overlay_osd(&mut image, osd_frame, font, osd_options, (x_offset as i32, 0));
+    }
     if let Some(srt_frame) = srt_frame {
         if let Some(srt_data) = &srt_frame.data {
             overlay_srt_data(&mut image, srt_data, srt_font, srt_options, (x_offset as i32, 0));

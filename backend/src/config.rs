@@ -2,7 +2,13 @@ use confy::ConfyError;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
-use crate::{ffmpeg::RenderSettings, osd::OsdOptions, srt::{SrtOptions, SrtType}, util::AppUpdate, NAMESPACE};
+use crate::{
+    ffmpeg::RenderSettings,
+    osd::OsdOptions,
+    srt::{SrtOptions, SrtType},
+    util::AppUpdate,
+    NAMESPACE,
+};
 
 #[derive(Debug, Deserialize, Serialize, Derivative)]
 #[derivative(Default)]
@@ -12,6 +18,8 @@ pub struct AppConfig {
     #[derivative(Default(value = "default_srt_profiles()"))]
     #[serde(default = "default_srt_profiles")]
     pub srt_profiles: std::collections::HashMap<SrtType, SrtOptions>,
+    #[serde(default)]
+    pub font_profiles: std::collections::HashMap<(crate::osd::FcFirmware, Option<crate::srt::SrtType>), String>,
     pub render_options: RenderSettings,
     pub app_update: AppUpdate,
     pub font_path: String,

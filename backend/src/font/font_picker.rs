@@ -98,6 +98,15 @@ pub fn find_font_in_folder(
         }
     }
 
+    if let Some(fallback_path) = find_compatible_fonts(folder, character_size, Some(firmware))
+        .into_iter()
+        .next()
+    {
+        if let Ok(font) = FontFile::open(fallback_path) {
+            return Some(font);
+        }
+    }
+
     None
 }
 
