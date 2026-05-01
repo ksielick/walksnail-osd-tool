@@ -221,9 +221,14 @@ impl WalksnailOsdTool {
                         });
                         ui.end_row();
 
-                        ui.label("SRT data").on_hover_text(tooltip_text(
-                            "Select data from the SRT file to be rendered on the video.",
-                        ));
+                        ui.vertical(|ui| {
+                            ui.label("SRT data").on_hover_text(tooltip_text(
+                                "Select data from the SRT file to be rendered on the video.",
+                            ));
+                            if let Some(srt_file) = &self.srt_file {
+                                ui.label(RichText::new(srt_file.srt_type.to_string()).color(Color32::LIGHT_BLUE));
+                            }
+                        });
                         let options = &mut self.srt_options;
                         let srt_file = self.srt_file.as_ref();
                         let has_time = srt_file.is_none_or(|s| s.has_flight_time);
@@ -318,6 +323,9 @@ impl WalksnailOsdTool {
             });
 
         if changed {
+            if let Some(srt_file) = &self.srt_file {
+                self.srt_profiles.insert(srt_file.srt_type, self.srt_options.clone());
+            }
             self.update_osd_preview(ctx);
             self.config_changed = Some(Instant::now());
         }

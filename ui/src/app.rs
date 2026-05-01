@@ -44,6 +44,7 @@ pub struct WalksnailOsdTool {
     pub osd_preview: OsdPreview,
     pub osd_options: OsdOptions,
     pub srt_options: SrtOptions,
+    pub srt_profiles: std::collections::HashMap<backend::srt::SrtType, SrtOptions>,
     pub srt_font: Option<rusttype::Font<'static>>,
     pub about_window_open: bool,
     pub dark_mode: bool,
@@ -78,7 +79,8 @@ impl WalksnailOsdTool {
         let srt_font: rusttype::Font<'static> =
             rusttype::Font::try_from_bytes(include_bytes!("../../resources/fonts/AzeretMono-Regular.ttf")).unwrap();
 
-        let srt_options = saved_settings.srt_options;
+        let srt_options = saved_settings.srt_options.clone();
+        let srt_profiles = saved_settings.srt_profiles.clone();
         let osd_options = saved_settings.osd_options;
 
         // Load last used font file
@@ -106,6 +108,7 @@ impl WalksnailOsdTool {
             srt_font: Some(srt_font),
             osd_options,
             srt_options,
+            srt_profiles,
             font_file,
             render_settings,
             app_update,

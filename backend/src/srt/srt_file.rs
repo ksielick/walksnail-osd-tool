@@ -36,6 +36,7 @@ pub struct SrtFile {
     pub has_sty_mode: bool,
     pub has_debug: bool,
     pub duration: Duration,
+    pub srt_type: super::SrtType,
     #[derivative(Debug = "ignore")]
     pub frames: Vec<SrtFrame>,
 }
@@ -126,6 +127,16 @@ impl SrtFile {
 
         let duration = Duration::from_secs_f32(srt_frames.last().unwrap().end_time_secs);
 
+        let srt_type = if has_mcs {
+            super::SrtType::AscentDebug
+        } else if has_hz {
+            super::SrtType::Ascent
+        } else if has_sty_mode || has_air_temp {
+            super::SrtType::Artlynk
+        } else {
+            super::SrtType::Avatar
+        };
+
         Ok(Self {
             file_path: path,
             has_signal,
@@ -151,6 +162,7 @@ impl SrtFile {
             has_sty_mode,
             has_debug,
             duration,
+            srt_type,
             frames: srt_frames,
         })
     }

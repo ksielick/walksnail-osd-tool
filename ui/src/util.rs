@@ -166,16 +166,24 @@ impl WalksnailOsdTool {
     pub fn import_srt_file(&mut self, file_handles: &[PathBuf]) {
         if let Some(srt_file_path) = filter_file_with_extention(file_handles, "srt") {
             self.srt_file = SrtFile::open(srt_file_path.clone()).ok();
-            let file_name = srt_file_path
-                .file_name()
-                .map(|f| f.to_string_lossy().to_lowercase())
-                .unwrap_or_default();
-            if file_name.starts_with("avatar") || file_name.starts_with("ascent") {
-                tracing::info!("Applying Avatar/Ascent SRT defaults");
-                self.srt_options = SrtOptions::walksnail_optimized();
-            } else {
-                tracing::info!("Applying Artlynk/Default SRT defaults");
-                self.srt_options = SrtOptions::default();
+            
+            if let Some(srt_file) = &self.srt_file {
+                if let Some(profile) = self.srt_profiles.get(&srt_file.srt_type) {
+                    tracing::info!("Applying SRT profile for {}", srt_file.srt_type);
+                    self.srt_options = profile.clone();
+                } else {
+                    let file_name = srt_file_path
+                        .file_name()
+                        .map(|f| f.to_string_lossy().to_lowercase())
+                        .unwrap_or_default();
+                    if file_name.starts_with("avatar") || file_name.starts_with("ascent") {
+                        tracing::info!("Applying Avatar/Ascent SRT defaults");
+                        self.srt_options = SrtOptions::walksnail_optimized();
+                    } else {
+                        tracing::info!("Applying Artlynk/Default SRT defaults");
+                        self.srt_options = SrtOptions::default();
+                    }
+                }
             }
 
             self.srt_options.show_distance &= self.srt_file.as_ref().is_none_or(|s| s.has_distance);
@@ -423,6 +431,7 @@ impl Into<AppConfig> for &mut WalksnailOsdTool {
         AppConfig {
             osd_options: self.osd_options.clone(),
             srt_options: self.srt_options.clone(),
+            srt_profiles: self.srt_profiles.clone(),
             render_options: self.render_settings.clone(),
             app_update: backend::util::AppUpdate {
                 check_on_startup: self.app_update.check_on_startup,

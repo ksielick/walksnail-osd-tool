@@ -2,13 +2,16 @@ use confy::ConfyError;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
-use crate::{ffmpeg::RenderSettings, osd::OsdOptions, srt::SrtOptions, util::AppUpdate, NAMESPACE};
+use crate::{ffmpeg::RenderSettings, osd::OsdOptions, srt::{SrtOptions, SrtType}, util::AppUpdate, NAMESPACE};
 
 #[derive(Debug, Deserialize, Serialize, Derivative)]
 #[derivative(Default)]
 pub struct AppConfig {
     pub osd_options: OsdOptions,
     pub srt_options: SrtOptions,
+    #[derivative(Default(value = "default_srt_profiles()"))]
+    #[serde(default = "default_srt_profiles")]
+    pub srt_profiles: std::collections::HashMap<SrtType, SrtOptions>,
     pub render_options: RenderSettings,
     pub app_update: AppUpdate,
     pub font_path: String,
@@ -18,6 +21,15 @@ pub struct AppConfig {
 }
 
 const CONFIG_NAME: &str = "saved_settings";
+
+fn default_srt_profiles() -> std::collections::HashMap<SrtType, SrtOptions> {
+    let mut map = std::collections::HashMap::new();
+    map.insert(SrtType::Avatar, SrtOptions::walksnail_optimized());
+    map.insert(SrtType::Ascent, SrtOptions::walksnail_optimized());
+    map.insert(SrtType::AscentDebug, SrtOptions::walksnail_optimized());
+    map.insert(SrtType::Artlynk, SrtOptions::default());
+    map
+}
 
 impl AppConfig {
     #[tracing::instrument(ret)]
