@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-05-01
+
+### Added
+- **Persistent Profiles**: Added support for persistent OSD and SRT profiles, remembering user preferences for each subtitle type (Ascent, Avatar, Artlynk).
+- **Smart Font Selection**: Improved font auto-selection with persistent history per FC firmware and SRT type, including smarter fallbacks for unknown files.
+- **SRT-Only Rendering**: Enabled video rendering and preview using only SRT files, removing the strict requirement for OSD and Font files.
+- **Artlynk Batch Processing**: Significantly improved batch processing for Artlynk files with automatic background OSD extraction.
+- **OSD Anchoring**: Added fixed-width formatting for variable-length SRT data (SSNR, GSNR, Hz, etc.) to prevent UI shifting during playback.
+
+### Fixed
+- **Preview Stability**: Fixed preview window crashes and display issues when OSD data is missing or incomplete.
+- **Artlynk Extraction Logic**: Resolved issues where the previous video's OSD was reused during batch processing of Artlynk files.
+- **Auto-Centering**: Improved horizontal auto-centering logic to handle optional OSD frames safely.
+
 ## [0.5.3] - 2026-04-27
 
 ### Added
