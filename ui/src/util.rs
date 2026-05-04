@@ -353,7 +353,7 @@ pub fn find_matching_file_with_extension(
         return Some(direct_match);
     }
 
-    // Fallback: search for the file with the closest duration match in the same directory
+    // Fallback: search for the file with the closest time or duration match in the same directory
     if let Ok(entries) = std::fs::read_dir(parent) {
         let files: Vec<PathBuf> = entries
             .flatten()
@@ -365,6 +365,44 @@ pub fn find_matching_file_with_extension(
             return None;
         }
 
+        // 1. Try time matching (Priority fallback)
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if let Ok(target_time) = metadata.modified() {
+                let mut best_time_match = None;
+                let mut min_time_diff = Duration::from_secs(u64::MAX);
+
+                for file in &files {
+                    if let Ok(m) = std::fs::metadata(file) {
+                        if let Ok(modified) = m.modified() {
+                            let diff = if modified > target_time {
+                                modified.duration_since(target_time).unwrap_or(Duration::from_secs(u64::MAX))
+                            } else {
+                                target_time.duration_since(modified).unwrap_or(Duration::from_secs(u64::MAX))
+                            };
+
+                            if diff < min_time_diff {
+                                min_time_diff = diff;
+                                best_time_match = Some(file.clone());
+                            }
+                        }
+                    }
+                }
+
+                // If the closest file is within a reasonable threshold (e.g. 10 seconds), use it.
+                if let Some(match_path) = best_time_match {
+                    if min_time_diff < Duration::from_secs(10) {
+                        tracing::info!(
+                            "Found match by time: {:?} (diff: {:?})",
+                            match_path.file_name().unwrap_or_default(),
+                            min_time_diff
+                        );
+                        return Some(match_path);
+                    }
+                }
+            }
+        }
+
+        // 2. Try duration matching (Secondary fallback)
         if let Some(target) = target_duration {
             let mut best_match = None;
             let mut min_diff = f32::MAX;
@@ -386,12 +424,12 @@ pub fn find_matching_file_with_extension(
                     }
                 }
             }
-            if best_match.is_some() {
-                return best_match;
+            if let Some(match_path) = best_match {
+                return Some(match_path);
             }
         }
 
-        // Final fallback if duration matching failed or wasn't possible
+        // Final fallback if all matching failed or wasn't possible
         let mut sorted_files = files;
         sorted_files.sort();
         return sorted_files.first().cloned();
