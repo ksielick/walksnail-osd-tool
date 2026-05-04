@@ -375,9 +375,13 @@ pub fn find_matching_file_with_extension(
                     if let Ok(m) = std::fs::metadata(file) {
                         if let Ok(modified) = m.modified() {
                             let diff = if modified > target_time {
-                                modified.duration_since(target_time).unwrap_or(Duration::from_secs(u64::MAX))
+                                modified
+                                    .duration_since(target_time)
+                                    .unwrap_or(Duration::from_secs(u64::MAX))
                             } else {
-                                target_time.duration_since(modified).unwrap_or(Duration::from_secs(u64::MAX))
+                                target_time
+                                    .duration_since(modified)
+                                    .unwrap_or(Duration::from_secs(u64::MAX))
                             };
 
                             if diff < min_time_diff {
