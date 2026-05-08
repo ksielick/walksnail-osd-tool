@@ -142,7 +142,7 @@ jobs:
           7z x ${{ matrix.targets.ffmpeg_filename }} -aoa
 
       - name: Extract ffprobe
-        if: ${{ matrix.targets.name == 'macos-intel' || matrix.targets.name == 'macos-arm' || matrix.targets.name == 'linux64' }}
+        if: ${{ matrix.targets.ffprobe_filename != '' }}
         run: |
           cd ${{ github.workspace }}/ext/ffmpeg/${{ matrix.targets.name }}
           7z x ${{ matrix.targets.ffprobe_filename }} -aoa
