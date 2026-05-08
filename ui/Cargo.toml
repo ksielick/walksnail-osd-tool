@@ -16,25 +16,24 @@ name = "walksnail-osd-tool"
 path = "../backend"
 
 [dependencies]
-crossbeam-channel = "0.5.8"
-derivative = "2.2.0"
-eframe = "0.28.1"
-egui = "0.28.1"
-egui_extras = { version = "0.28.1", features = ["image"] }
-github_release_check = "0.2.1"
-image = "0.24.6"
-poll-promise = "0.3.0"
-rfd = "0.14.1"
-rusttype = "0.9.3"
-tracing = "0.1.37"
-tracing-appender = { version = "0.2.2", default-features = false }
-tracing-subscriber = "0.3.16"
-directories = "5.0.0"
-semver = "1.0.17"
+crossbeam-channel = "0.5"
+derivative = "2.2"
+eframe = "0.34"
+egui = "0.34"
+egui_extras = { version = "0.34", features = ["image"] }
+github_release_check = "0.2"
+image = "0.25"
+poll-promise = "0.3"
+rfd = "0.17"
+ab_glyph = "0.2"
+tracing = "0.1"
+tracing-appender = { version = "0.2", default-features = false }
+tracing-subscriber = "0.3"
+directories = "6"
+semver = "1"
 
 [build-dependencies]
-image = "0.24.5"
-vergen = "7.5.1"
+image = "0.25"
 
 [features]
 macos-app-bundle = []

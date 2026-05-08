@@ -12,8 +12,10 @@ use crate::{
 };
 
 impl WalksnailOsdTool {
-    pub fn render_central_panel(&mut self, ctx: &egui::Context) {
-        CentralPanel::default().show(ctx, |ui| {
+    pub fn render_central_panel(&mut self, root_ui: &mut Ui) {
+        let ctx = root_ui.ctx().clone();
+        let ctx = &ctx;
+        CentralPanel::default().show_inside(root_ui, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
                 ui.style_mut().spacing.slider_width = self.ui_dimensions.osd_position_sliders_length;
 
@@ -473,7 +475,7 @@ impl WalksnailOsdTool {
                         ui.label("Encoder")
                             .on_hover_text(tooltip_text("Encoder used for rendering. In some cases not all available encoders are detected. Check the box to also show these."));
                         ui.horizontal(|ui| {
-                            let selection = egui::ComboBox::from_id_source("encoder").width(350.0).show_index(
+                            let selection = egui::ComboBox::from_id_salt("encoder").width(350.0).show_index(
                                 ui,
                                 &mut self.render_settings.selected_encoder_idx,
                                 selectable_encoders.len(),
@@ -517,7 +519,7 @@ impl WalksnailOsdTool {
                             backend::ffmpeg::UpscaleTarget::P1440 => 1,
                             backend::ffmpeg::UpscaleTarget::P2160 => 2,
                         };
-                        let upscale_selection = egui::ComboBox::from_id_source("upscale")
+                        let upscale_selection = egui::ComboBox::from_id_salt("upscale")
                             .width(100.0)
                             .show_index(
                                 ui,

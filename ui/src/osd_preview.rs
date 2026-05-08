@@ -14,7 +14,7 @@ pub fn create_osd_preview(
     osd_frame: Option<&osd::Frame>,
     srt_frame: Option<&srt::SrtFrame>,
     font: Option<&font::FontFile>,
-    srt_font: &rusttype::Font,
+    srt_font: &ab_glyph::FontArc,
     osd_options: &OsdOptions,
     srt_options: &SrtOptions,
     pad_4_3_to_16_9: bool,
@@ -59,7 +59,7 @@ pub fn create_osd_preview(
 }
 
 #[tracing::instrument(level = "debug")]
-#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_wrap, dead_code)]
 pub fn calculate_horizontal_offset(width: u32, osd_frame: &osd::Frame, character_size: &font::CharacterSize) -> i32 {
     if osd_frame.glyphs.is_empty() {
         return 0;
@@ -72,7 +72,7 @@ pub fn calculate_horizontal_offset(width: u32, osd_frame: &osd::Frame, character
 }
 
 #[tracing::instrument(level = "debug")]
-#[allow(clippy::cast_possible_wrap)]
+#[allow(clippy::cast_possible_wrap, dead_code)]
 pub fn calculate_vertical_offset(height: u32, osd_frame: &osd::Frame, character_size: &font::CharacterSize) -> i32 {
     if osd_frame.glyphs.is_empty() {
         return 0;

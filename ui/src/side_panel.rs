@@ -6,14 +6,15 @@ use super::WalksnailOsdTool;
 use crate::util::{format_minutes_seconds, separator_with_space};
 
 impl WalksnailOsdTool {
-    pub fn render_sidepanel(&mut self, ctx: &egui::Context) {
+    pub fn render_sidepanel(&mut self, root_ui: &mut Ui) {
         let panel_width =
             self.ui_dimensions.file_info_column1_width + self.ui_dimensions.file_info_column2_width + 40.0;
-        egui::SidePanel::left("side_panel")
-            .default_width(270.0)
-            .min_width(panel_width)
-            .max_width(1000.0)
-            .show(ctx, |ui| {
+        let ctx = root_ui.ctx().clone();
+        egui::Panel::left("side_panel")
+            .default_size(270.0)
+            .min_size(panel_width)
+            .max_size(1000.0)
+            .show_inside(root_ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.add_space(10.0);
                     self.video_info(ui);
@@ -22,7 +23,7 @@ impl WalksnailOsdTool {
                     separator_with_space(ui, 15.0);
                     self.srt_info(ui);
                     separator_with_space(ui, 15.0);
-                    self.font_info(ui, ctx);
+                    self.font_info(ui, &ctx);
                 });
             });
     }
@@ -379,7 +380,7 @@ impl WalksnailOsdTool {
                                                         self.auto_center_horizontal();
                                                         self.update_osd_preview(ctx);
                                                         self.auto_resize_window(ctx);
-                                                        ui.close_menu();
+                                                        ui.close_kind(egui::UiKind::Menu);
                                                     }
                                                 }
                                             }

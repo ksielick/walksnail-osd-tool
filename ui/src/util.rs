@@ -498,7 +498,7 @@ pub fn set_style(ctx: &egui::Context) {
         FontFamily::{Monospace, Proportional},
         Style,
     };
-    let mut style = Style::clone(&ctx.style());
+    let mut style = Style::clone(&ctx.global_style());
     style.text_styles = [
         (TextStyle::Small, FontId::new(9.0, Proportional)),
         (TextStyle::Body, FontId::new(15.0, Proportional)),
@@ -509,12 +509,12 @@ pub fn set_style(ctx: &egui::Context) {
     ]
     .into();
     style.spacing.window_margin = Margin {
-        left: 20.0,
-        right: 20.0,
-        top: 6.0,
-        bottom: 20.0,
+        left: 20,
+        right: 20,
+        top: 6,
+        bottom: 20,
     };
-    ctx.set_style(style);
+    ctx.set_global_style(style);
 }
 
 pub fn tooltip_text(text: &str) -> RichText {
@@ -526,7 +526,7 @@ pub fn set_custom_fonts(ctx: &egui::Context) {
 
     fonts.font_data.insert(
         "inter-regular".to_owned(),
-        egui::FontData::from_static(include_bytes!("../../resources/fonts/Inter-Regular.ttf")),
+        egui::FontData::from_static(include_bytes!("../../resources/fonts/Inter-Regular.ttf")).into(),
     );
 
     fonts

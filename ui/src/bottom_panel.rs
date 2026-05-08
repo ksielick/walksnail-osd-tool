@@ -5,8 +5,8 @@ use super::{util::format_minutes_seconds, WalksnailOsdTool};
 use crate::render_status::Status;
 
 impl WalksnailOsdTool {
-    pub fn render_bottom_panel(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+    pub fn render_bottom_panel(&mut self, root_ui: &mut Ui) {
+        egui::Panel::bottom("bottom_panel").show_inside(root_ui, |ui| {
             ui.add_space(5.0);
             ui.horizontal(|ui| {
                 self.start_stop_render_button(ui);

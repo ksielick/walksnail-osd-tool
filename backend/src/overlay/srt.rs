@@ -13,7 +13,7 @@ use crate::srt::{SrtFrameData, SrtOptions};
 pub fn overlay_srt_data(
     image: &mut RgbaImage,
     srt_data: &SrtFrameData,
-    font: &rusttype::Font,
+    font: &impl ab_glyph::Font,
     srt_options: &SrtOptions,
     offset: (i32, i32),
 ) {
@@ -164,7 +164,7 @@ pub fn overlay_srt_data(
     let x_pos_pct = srt_options.position.x / 100.0;
     let y_pos_pct = srt_options.position.y / 100.0;
     let scale_val = srt_options.scale / 1080.0 * image_dimensions.1 as f32;
-    let scale = rusttype::Scale::uniform(scale_val);
+    let scale = ab_glyph::PxScale::from(scale_val);
 
     let x_start = (x_pos_pct * image_dimensions.0 as f32) as i32;
     let y_start = (y_pos_pct * image_dimensions.1 as f32) as i32;
@@ -187,7 +187,8 @@ pub fn overlay_srt_data(
 
         let (total_width, _) = text_size(scale, font, &potential_line);
 
-        if total_width > max_width && !current_line.is_empty() {
+        #[allow(clippy::cast_sign_loss)]
+        if total_width > max_width as u32 && !current_line.is_empty() {
             lines.push(current_line);
             current_line = segment;
         } else {
