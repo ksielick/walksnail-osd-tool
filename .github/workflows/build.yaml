@@ -142,7 +142,7 @@ jobs:
           7z x ${{ matrix.targets.ffmpeg_filename }} -aoa
 
       - name: Extract ffprobe
-        if: ${{ matrix.targets.name == 'macos-intel' || matrix.targets.name == 'macos-arm' }}
+        if: ${{ matrix.targets.name == 'macos-intel' || matrix.targets.name == 'macos-arm' || matrix.targets.name == 'linux64' }}
         run: |
           cd ${{ github.workspace }}/ext/ffmpeg/${{ matrix.targets.name }}
           7z x ${{ matrix.targets.ffprobe_filename }} -aoa
@@ -179,6 +179,7 @@ jobs:
           mkdir -p walksnail-osd-tool/usr/bin
           cp ${{ github.workspace }}/target/${{ matrix.targets.target }}/release/walksnail-osd-tool walksnail-osd-tool/usr/bin/walksnail-osd-tool
           cp ${{ github.workspace }}/ext/ffmpeg/${{ matrix.targets.name }}/ffmpeg walksnail-osd-tool/usr/bin/
+          cp ${{ github.workspace }}/ext/ffmpeg/${{ matrix.targets.name }}/ffprobe walksnail-osd-tool/usr/bin/
           cp ${{ github.workspace }}/resources/icons/512x512.png walksnail-osd-tool/walksnail-osd-tool.png
           cp ${{ github.workspace }}/resources/icons/512x512.png walksnail-osd-tool/.DirIcon
 
