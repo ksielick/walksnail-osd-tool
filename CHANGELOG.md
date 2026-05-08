@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.5] - 2026-05-08
+
+### Added
+- **Timestamp-Based File Matching**: Matching OSD and SRT files can now be automatically identified based on the capture date and time of the MP4 video, providing more reliable associations when filenames don't match.
+- **Hardware Encoder Detection for Linux**: Added `ffprobe` to the Linux AppImage, enabling automatic detection of available hardware encoders (NVENC, VAAPI, etc.).
+
+### Changed
+- **Framework Upgrade**: Updated workspace to use `egui 0.34`, `rfd 0.17`, and `image 0.25`.
+- **Improved macOS Support**: Fixed the font folder picker behavior on macOS.
+
+### Fixed
+- **Linux Build Fix**: Resolved an issue where the `ffprobe` binary was not correctly extracted during the AppImage creation process.
+
 ## [0.5.4] - 2026-05-01
 
 ### Added
