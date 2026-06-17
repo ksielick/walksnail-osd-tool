@@ -36,6 +36,12 @@ pub struct RenderSettings {
     pub pad_4_3_to_16_9: bool,
     pub use_chroma_key: bool,
     pub chroma_key: [f32; 3],
+    #[serde(default = "default_include_audio")]
+    pub include_audio: bool,
+}
+
+fn default_include_audio() -> bool {
+    true
 }
 
 impl Default for RenderSettings {
@@ -55,6 +61,7 @@ impl Default for RenderSettings {
             pad_4_3_to_16_9: false,
             use_chroma_key: false,
             chroma_key: [1.0 / 255.0, 177.0 / 255.0, 64.0 / 255.0],
+            include_audio: true,
         }
     }
 }

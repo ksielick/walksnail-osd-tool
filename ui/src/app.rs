@@ -97,7 +97,7 @@ impl WalksnailOsdTool {
             ..Default::default()
         };
 
-        let render_settings = RenderSettings::default();
+        let render_settings = saved_settings.render_options.clone();
 
         Self {
             dependencies: Dependencies {

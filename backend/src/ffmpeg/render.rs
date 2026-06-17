@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    io::Write,
+    io::{BufReader, Read, Write},
     path::PathBuf,
     sync::Arc,
     thread,
@@ -63,6 +63,8 @@ pub fn start_video_render(
         output_video,
         render_settings.upscale,
         render_settings.pad_4_3_to_16_9,
+        input_video,
+        render_settings.include_audio,
     )?;
 
     // Channels to communicate with ffmpeg handler thread
@@ -190,17 +192,74 @@ pub fn start_video_render(
         })
         .expect("Failed to spawn decoder handler thread");
 
-    // On yet another thread run the encoder to completion
+    // On yet another thread run the encoder to completion by reading stderr directly
+    let stderr = encoder_process
+        .take_stderr()
+        .expect("Failed to get `stderr` for encoder");
     thread::Builder::new()
         .name("Encoder handler".into())
         .spawn(move || {
             tracing::info_span!("Encoder handler thread").in_scope(|| {
-                encoder_process
-                    .iter()
-                    .expect("Failed to create encoder iterator")
-                    .for_each(|event| {
-                        handle_encoder_events(event, &from_ffmpeg_tx);
-                    });
+                let mut reader = BufReader::new(stderr);
+                let mut buf = Vec::new();
+                loop {
+                    buf.clear();
+                    let mut byte_buf = [0u8; 1];
+                    let mut eof = false;
+                    loop {
+                        match reader.read_exact(&mut byte_buf) {
+                            Ok(()) => {
+                                let b = byte_buf[0];
+                                if b == b'\r' || b == b'\n' {
+                                    if !buf.is_empty() {
+                                        break;
+                                    }
+                                } else {
+                                    buf.push(b);
+                                }
+                            }
+                            Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                            Err(_) => {
+                                eof = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if !buf.is_empty() {
+                        let line_str = String::from_utf8_lossy(&buf);
+                        let line_str = line_str.trim();
+                        if !line_str.is_empty() {
+                            if let Some(p) = manual_parse_progress(line_str) {
+                                from_ffmpeg_tx.send(FromFfmpegMessage::Progress(p)).ok();
+                            }
+
+                            let is_error = line_str.contains("[error]")
+                                || line_str.contains("[fatal]")
+                                || line_str.contains("Error initializing output stream")
+                                || line_str.contains("[error] Cannot load");
+                            let is_warning = line_str.contains("[warning]");
+
+                            if is_error {
+                                tracing::error!("ffmpeg encoder error: {}", line_str);
+                                from_ffmpeg_tx
+                                    .send(FromFfmpegMessage::EncoderFatalError(line_str.to_string()))
+                                    .ok();
+                            } else if is_warning {
+                                tracing::warn!("ffmpeg encoder warning: {}", line_str);
+                            } else {
+                                tracing::debug!("ffmpeg encoder log: {}", line_str);
+                            }
+                        }
+                    }
+
+                    if eof {
+                        tracing::info!("ffmpeg encoder EOF reached");
+                        tracing::info!("Sending EncoderFinished message");
+                        from_ffmpeg_tx.send(FromFfmpegMessage::EncoderFinished).ok();
+                        break;
+                    }
+                }
             });
         })
         .expect("Failed to spawn encoder handler thread");
@@ -245,6 +304,8 @@ pub fn spawn_encoder(
     output_video: &PathBuf,
     upscale: UpscaleTarget,
     pad_4_3_to_16_9: bool,
+    input_video: &PathBuf,
+    include_audio: bool,
 ) -> Result<FfmpegChild, FfmpegError> {
     let mut encoder_command = FfmpegCommand::new_with_path(ffmpeg_path);
 
@@ -262,7 +323,15 @@ pub fn spawn_encoder(
         .pix_fmt("rgba")
         .size(final_width, final_height)
         .rate(frame_rate)
+        .args(["-thread_queue_size", "2048"])
         .input("-");
+
+    if include_audio {
+        encoder_command
+            .args(["-thread_queue_size", "2048"])
+            .arg("-i")
+            .arg(input_video.to_str().unwrap());
+    }
 
     let mut filters = Vec::new();
 
@@ -280,9 +349,22 @@ pub fn spawn_encoder(
         encoder_command.args(["-vf", &filters.join(",")]);
     }
 
+    encoder_command.pix_fmt("yuv420p").codec_video(&video_encoder.name);
+
+    if include_audio {
+        encoder_command.args([
+            "-map",
+            "0:v",
+            "-map",
+            "1:a?",
+            "-c:a",
+            "copy",
+            "-max_muxing_queue_size",
+            "2048",
+        ]);
+    }
+
     encoder_command
-        .pix_fmt("yuv420p")
-        .codec_video(&video_encoder.name)
         .args(["-b:v", &format!("{bitrate_mbps}M")])
         .args(&video_encoder.extra_args)
         .overwrite()
@@ -299,7 +381,9 @@ fn manual_parse_progress(log_line: &str) -> Option<ffmpeg_sidecar::event::Ffmpeg
 
     let frame = parse_val(log_line, "frame=")?.parse().ok()?;
     let fps = parse_val(log_line, "fps=")?.parse().ok()?;
-    let speed = parse_val(log_line, "speed=")?.parse().ok()?;
+    let speed = parse_val(log_line, "speed=")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
 
     Some(ffmpeg_sidecar::event::FfmpegProgress {
         frame,
@@ -338,33 +422,6 @@ fn parse_val(s: &str, key: &str) -> Option<String> {
         None
     } else {
         Some(result)
-    }
-}
-
-/// Handle events from the encoder process.
-///
-/// # Panics
-/// Panics if the `ffmpeg_sender` channel is closed.
-fn handle_encoder_events(ffmpeg_event: FfmpegEvent, ffmpeg_sender: &Sender<FromFfmpegMessage>) {
-    match ffmpeg_event {
-        FfmpegEvent::Progress(p) => {
-            ffmpeg_sender.send(FromFfmpegMessage::Progress(p)).unwrap();
-        }
-        FfmpegEvent::Log(_level, e) => {
-            if let Some(p) = manual_parse_progress(&e) {
-                ffmpeg_sender.send(FromFfmpegMessage::Progress(p)).ok();
-            }
-            if e.contains("Error initializing output stream") || e.contains("[error] Cannot load") {
-                tracing::info!("Sending EncoderFatalError message: {}", &e);
-                ffmpeg_sender.send(FromFfmpegMessage::EncoderFatalError(e)).unwrap();
-            }
-        }
-        FfmpegEvent::LogEOF => {
-            tracing::info!("ffmpeg encoder EOF reached");
-            tracing::info!("Sending EncoderFinished message");
-            ffmpeg_sender.send(FromFfmpegMessage::EncoderFinished).unwrap();
-        }
-        _ => {}
     }
 }
 

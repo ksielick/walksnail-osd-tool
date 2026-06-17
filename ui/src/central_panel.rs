@@ -551,6 +551,10 @@ impl WalksnailOsdTool {
                             changed |= ui.color_edit_button_rgb(&mut self.render_settings.chroma_key).changed();
                         });
                         ui.end_row();
+
+                        ui.label("Audio").on_hover_text(tooltip_text("Copy the audio track from the original video to the output video."));
+                        changed |= ui.add(Checkbox::without_text(&mut self.render_settings.include_audio)).changed();
+                        ui.end_row();
                     });
             });
 
