@@ -19,6 +19,7 @@ use github_release_check::{GitHubReleaseItem, LookupError};
 use poll_promise::Promise;
 
 use crate::{
+    audio_preview::AudioPreviewState,
     osd_preview::create_osd_preview,
     render_status::RenderStatus,
     util::{set_custom_fonts, set_style},
@@ -58,6 +59,7 @@ pub struct WalksnailOsdTool {
     pub batch_progress: Option<(usize, usize)>,
     pub pending_batch_render: bool,
     pub font_manually_selected: bool,
+    pub audio_preview: AudioPreviewState,
 }
 
 impl WalksnailOsdTool {
@@ -203,6 +205,7 @@ impl eframe::App for WalksnailOsdTool {
         self.poll_update_check();
         self.poll_dependency_check();
         self.poll_artlynk_extraction(&ctx);
+        self.audio_preview.poll(&ctx, &self.render_settings);
 
         self.render_top_panel(ui);
 
@@ -485,6 +488,7 @@ impl WalksnailOsdTool {
 
     pub fn start_render_process(&mut self) {
         tracing::info!("Starting render process");
+        self.audio_preview.stop();
         self.render_status.start_render();
         if let (Some(video_path), Some(video_info)) = (&self.video_file, &self.video_info) {
             self.osd_options.osd_playback_speed_factor = if self.osd_options.adjust_playback_speed {

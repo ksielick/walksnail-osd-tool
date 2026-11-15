@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-11-15
+
+### Added
+- **Audio Cleanup Post-Processing**: Added an optional audio cleanup pipeline (with `Filter strength` default `60%` and `Audio gain` default `-4 dB`) featuring bounded `int16` wraparound unwrapping, overload burst de-clicking, 4th-order high-pass filtering, 3-band dynamic wind/hiss reduction, RMS overload compression, and soft-knee limiting.
+- **5-Second Audio Preview**: Added an in-app 5-second audio preview playback control (with `Reset` to default `60%` / `-4 dB` settings) so users can audition filtered vs. original audio before rendering.
+
 ## [0.5.6] - 2026-06-17
 
 ### Added

@@ -38,10 +38,28 @@ pub struct RenderSettings {
     pub chroma_key: [f32; 3],
     #[serde(default = "default_include_audio")]
     pub include_audio: bool,
+    #[serde(default = "default_audio_cleanup")]
+    pub audio_cleanup: bool,
+    #[serde(default = "default_audio_filter_strength")]
+    pub audio_filter_strength: u8,
+    #[serde(default = "default_audio_gain_db")]
+    pub audio_gain_db: i8,
 }
 
 fn default_include_audio() -> bool {
     true
+}
+
+fn default_audio_cleanup() -> bool {
+    false
+}
+
+fn default_audio_filter_strength() -> u8 {
+    60
+}
+
+fn default_audio_gain_db() -> i8 {
+    -4
 }
 
 impl Default for RenderSettings {
@@ -62,6 +80,9 @@ impl Default for RenderSettings {
             use_chroma_key: false,
             chroma_key: [1.0 / 255.0, 177.0 / 255.0, 64.0 / 255.0],
             include_audio: true,
+            audio_cleanup: false,
+            audio_filter_strength: 60,
+            audio_gain_db: -4,
         }
     }
 }

@@ -27,4 +27,6 @@ pub enum FfmpegError {
         #[from]
         source: std::io::Error,
     },
+    #[error("Failed to process audio stream: {message}")]
+    AudioProcessing { message: String },
 }

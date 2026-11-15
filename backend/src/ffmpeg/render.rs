@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     io::{BufReader, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
     thread,
 };
@@ -16,8 +16,10 @@ use image::{Rgba, RgbaImage};
 use rayon::prelude::*;
 
 use super::{
-    error::FfmpegError, render_settings::RenderSettings, Encoder, FromFfmpegMessage, ToFfmpegMessage, UpscaleTarget,
-    VideoInfo,
+    audio::{prepare_cleaned_audio_wav, TempAudioFile},
+    error::FfmpegError,
+    render_settings::RenderSettings,
+    Encoder, FromFfmpegMessage, ToFfmpegMessage, UpscaleTarget, VideoInfo,
 };
 use crate::{
     font,
@@ -46,6 +48,36 @@ pub fn start_video_render(
     video_info: &VideoInfo,
     render_settings: &RenderSettings,
 ) -> Result<(Sender<ToFfmpegMessage>, Receiver<FromFfmpegMessage>), FfmpegError> {
+    let temp_audio_file: Option<TempAudioFile> =
+        if render_settings.include_audio && render_settings.audio_cleanup && video_info.has_audio {
+            let sample_rate = video_info.audio_sample_rate.unwrap_or(8000);
+            let channels = video_info.audio_channels.unwrap_or(1);
+            prepare_cleaned_audio_wav(
+                ffmpeg_path,
+                input_video,
+                sample_rate,
+                channels,
+                render_settings.audio_filter_strength,
+                render_settings.audio_gain_db,
+            )?
+        } else {
+            None
+        };
+
+    let audio_mode = if !render_settings.include_audio {
+        EncoderAudioMode::None
+    } else if let Some(ref temp_wav) = temp_audio_file {
+        let src_sr = video_info.audio_sample_rate.unwrap_or(8000);
+        let target_sr = if src_sr < 44_100 { 48_000 } else { src_sr };
+        EncoderAudioMode::CleanedWav {
+            wav_path: &temp_wav.path,
+            start_time_secs: video_info.audio_start_time_secs,
+            target_sample_rate: target_sr,
+        }
+    } else {
+        EncoderAudioMode::CopyFromInput(input_video)
+    };
+
     let mut decoder_process = spawn_decoder(
         ffmpeg_path,
         input_video,
@@ -63,8 +95,7 @@ pub fn start_video_render(
         output_video,
         render_settings.upscale,
         render_settings.pad_4_3_to_16_9,
-        input_video,
-        render_settings.include_audio,
+        audio_mode,
     )?;
 
     // Channels to communicate with ffmpeg handler thread
@@ -199,6 +230,7 @@ pub fn start_video_render(
     thread::Builder::new()
         .name("Encoder handler".into())
         .spawn(move || {
+            let _temp_audio_guard = temp_audio_file;
             tracing::info_span!("Encoder handler thread").in_scope(|| {
                 let mut reader = BufReader::new(stderr);
                 let mut buf = Vec::new();
@@ -292,6 +324,17 @@ pub fn spawn_decoder(
     Ok(decoder)
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum EncoderAudioMode<'a> {
+    None,
+    CopyFromInput(&'a Path),
+    CleanedWav {
+        wav_path: &'a Path,
+        start_time_secs: f64,
+        target_sample_rate: u32,
+    },
+}
+
 #[tracing::instrument(skip(ffmpeg_path))]
 #[allow(clippy::cast_precision_loss)]
 pub fn spawn_encoder(
@@ -304,8 +347,7 @@ pub fn spawn_encoder(
     output_video: &PathBuf,
     upscale: UpscaleTarget,
     pad_4_3_to_16_9: bool,
-    input_video: &PathBuf,
-    include_audio: bool,
+    audio_mode: EncoderAudioMode<'_>,
 ) -> Result<FfmpegChild, FfmpegError> {
     let mut encoder_command = FfmpegCommand::new_with_path(ffmpeg_path);
 
@@ -326,11 +368,25 @@ pub fn spawn_encoder(
         .args(["-thread_queue_size", "2048"])
         .input("-");
 
-    if include_audio {
-        encoder_command
-            .args(["-thread_queue_size", "2048"])
-            .arg("-i")
-            .arg(input_video.to_str().unwrap());
+    match audio_mode {
+        EncoderAudioMode::None => {}
+        EncoderAudioMode::CopyFromInput(input_video) => {
+            encoder_command
+                .args(["-thread_queue_size", "2048"])
+                .arg("-i")
+                .arg(input_video.to_str().unwrap());
+        }
+        EncoderAudioMode::CleanedWav {
+            wav_path,
+            start_time_secs,
+            ..
+        } => {
+            encoder_command.args(["-thread_queue_size", "2048"]);
+            if start_time_secs > 0.001 {
+                encoder_command.args(["-itsoffset", &format!("{start_time_secs:.6}")]);
+            }
+            encoder_command.arg("-i").arg(wav_path.to_str().unwrap());
+        }
     }
 
     let mut filters = Vec::new();
@@ -351,17 +407,36 @@ pub fn spawn_encoder(
 
     encoder_command.pix_fmt("yuv420p").codec_video(&video_encoder.name);
 
-    if include_audio {
-        encoder_command.args([
-            "-map",
-            "0:v",
-            "-map",
-            "1:a?",
-            "-c:a",
-            "copy",
-            "-max_muxing_queue_size",
-            "2048",
-        ]);
+    match audio_mode {
+        EncoderAudioMode::None => {}
+        EncoderAudioMode::CopyFromInput(_) => {
+            encoder_command.args([
+                "-map",
+                "0:v",
+                "-map",
+                "1:a?",
+                "-c:a",
+                "copy",
+                "-max_muxing_queue_size",
+                "2048",
+            ]);
+        }
+        EncoderAudioMode::CleanedWav { target_sample_rate, .. } => {
+            encoder_command.args([
+                "-map",
+                "0:v",
+                "-map",
+                "1:a",
+                "-c:a",
+                "aac",
+                "-ar",
+                &target_sample_rate.to_string(),
+                "-b:a",
+                "128k",
+                "-max_muxing_queue_size",
+                "2048",
+            ]);
+        }
     }
 
     encoder_command

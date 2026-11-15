@@ -62,6 +62,7 @@ impl WalksnailOsdTool {
 
             self.video_file = Some(video_file.clone());
             self.video_info = VideoInfo::get(video_file, &self.dependencies.ffprobe_path).ok();
+            self.audio_preview.clear_cache();
             self.osd_file = None;
             self.srt_file = None;
             self.artlynk_extraction_promise = None;

@@ -439,7 +439,7 @@ impl WalksnailOsdTool {
             }
         }
 
-        let line_stroke = Stroke::new(1.0, Color32::GRAY.gamma_multiply(0.5));
+        let line_stroke = Stroke::new(1.0_f32, Color32::GRAY.gamma_multiply(0.5));
 
         for i in 0..=53 {
             #[allow(clippy::cast_precision_loss)]
@@ -552,9 +552,178 @@ impl WalksnailOsdTool {
                         });
                         ui.end_row();
 
-                        ui.label("Audio").on_hover_text(tooltip_text("Copy the audio track from the original video to the output video."));
-                        changed |= ui.add(Checkbox::without_text(&mut self.render_settings.include_audio)).changed();
+                        ui.label("Audio").on_hover_text(tooltip_text("Include the audio track from the original video in the output video."));
+                        if ui
+                            .add(Checkbox::without_text(&mut self.render_settings.include_audio))
+                            .changed()
+                        {
+                            if !self.render_settings.include_audio {
+                                self.audio_preview.stop();
+                            }
+                            changed |= true;
+                        }
                         ui.end_row();
+
+                        if self.render_settings.include_audio {
+                            ui.label("Audio cleanup").on_hover_text(tooltip_text(
+                                "Repair 16-bit wraparound crackles, remove low-frequency wind rumble, attenuate loudness, and limit clipping peaks.",
+                            ));
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add(Checkbox::without_text(&mut self.render_settings.audio_cleanup))
+                                    .changed()
+                                {
+                                    changed |= true;
+                                    self.audio_preview.restart_if_playing(&self.render_settings);
+                                }
+                                if self.render_settings.audio_cleanup {
+                                    ui.label("Fix crackles, wind & clipping");
+                                } else {
+                                    ui.label("Stream copy (original audio)");
+                                }
+                            });
+                            ui.end_row();
+
+                            if self.render_settings.audio_cleanup {
+                                ui.label("Filter strength").on_hover_text(tooltip_text(
+                                    "Controls wind high-pass cutoff and high-frequency harshness smoothing.",
+                                ));
+                                ui.horizontal(|ui| {
+                                    let filter_slider = ui.add(
+                                        Slider::new(&mut self.render_settings.audio_filter_strength, 0..=100).text("%"),
+                                    );
+                                    if filter_slider.changed() {
+                                        changed |= true;
+                                    }
+                                    if filter_slider.drag_stopped() {
+                                        self.audio_preview.restart_if_playing(&self.render_settings);
+                                    }
+
+                                    let sample_rate = self
+                                        .video_info
+                                        .as_ref()
+                                        .and_then(|v| v.audio_sample_rate)
+                                        .unwrap_or(8000);
+                                    let (hpf_hz, lpf_hz) = backend::ffmpeg::filter_cutoffs(
+                                        sample_rate,
+                                        self.render_settings.audio_filter_strength,
+                                    );
+                                    if let Some(lpf) = lpf_hz {
+                                        ui.label(format!("(HPF {hpf_hz:.0} Hz, LPF {lpf:.0} Hz)"));
+                                    } else {
+                                        ui.label(format!("(HPF {hpf_hz:.0} Hz)"));
+                                    }
+                                });
+                                ui.end_row();
+
+                                ui.label("Audio gain").on_hover_text(tooltip_text(
+                                    "Output volume adjustment before the soft limiter (-4 dB is recommended with the 3-band wind filter).",
+                                ));
+                                ui.horizontal(|ui| {
+                                    let gain_slider = ui.add(
+                                        Slider::new(&mut self.render_settings.audio_gain_db, -24..=0).text("dB"),
+                                    );
+                                    if gain_slider.changed() {
+                                        changed |= true;
+                                    }
+                                    if gain_slider.drag_stopped() {
+                                        self.audio_preview.restart_if_playing(&self.render_settings);
+                                    }
+                                    if ui.button("Reset").clicked() {
+                                        self.render_settings.audio_filter_strength = 60;
+                                        self.render_settings.audio_gain_db = -4;
+                                        changed |= true;
+                                        self.audio_preview.restart_if_playing(&self.render_settings);
+                                    }
+                                });
+                                ui.end_row();
+                            }
+
+                            ui.label("Audio preview").on_hover_text(tooltip_text(
+                                "Play a 5-second audio sample starting at the current Preview frame.",
+                            ));
+                            ui.horizontal(|ui| {
+                                let has_audio = self.video_info.as_ref().is_some_and(|v| v.has_audio);
+                                let can_preview = self.video_file.is_some()
+                                    && has_audio
+                                    && self.dependencies.dependencies_satisfied;
+
+                                let is_loading = self.audio_preview.is_loading();
+                                let is_playing = self.audio_preview.is_playing();
+
+                                let button_label = if is_loading {
+                                    "Cancel".to_string()
+                                } else if is_playing {
+                                    "Stop".to_string()
+                                } else if let Some(video_info) = &self.video_info {
+                                    let start = crate::audio_preview::AudioPreviewState::preview_start_secs(
+                                        self.osd_preview.preview_frame,
+                                        video_info,
+                                    );
+                                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                                    let total_secs = start.round() as u64;
+                                    let mins = total_secs / 60;
+                                    let secs = total_secs % 60;
+                                    format!("Preview 5s ({mins}:{secs:02})")
+                                } else {
+                                    "Preview 5s".to_string()
+                                };
+
+                                let preview_btn = ui
+                                    .add_enabled(can_preview, Button::new(button_label))
+                                    .on_disabled_hover_text(tooltip_text(if self.video_file.is_none() {
+                                        "Load a video file first"
+                                    } else if !has_audio {
+                                        "The loaded video has no audio track"
+                                    } else {
+                                        "ffmpeg is required for audio preview"
+                                    }));
+
+                                if preview_btn.clicked() {
+                                    if let (Some(video_path), Some(video_info)) = (&self.video_file, &self.video_info) {
+                                        self.audio_preview.toggle(
+                                            &self.dependencies.ffmpeg_path,
+                                            video_path,
+                                            video_info,
+                                            self.osd_preview.preview_frame,
+                                            &self.render_settings,
+                                        );
+                                    }
+                                }
+
+                                if self.render_settings.audio_cleanup {
+                                    if ui
+                                        .selectable_label(!self.audio_preview.play_original, "Filtered")
+                                        .clicked()
+                                        && self.audio_preview.play_original
+                                    {
+                                        self.audio_preview.play_original = false;
+                                        self.audio_preview.restart_if_playing(&self.render_settings);
+                                    }
+                                    if ui
+                                        .selectable_label(self.audio_preview.play_original, "Original")
+                                        .clicked()
+                                        && !self.audio_preview.play_original
+                                    {
+                                        self.audio_preview.play_original = true;
+                                        self.audio_preview.restart_if_playing(&self.render_settings);
+                                    }
+                                }
+
+                                if is_loading {
+                                    ui.spinner();
+                                    ui.label("Extracting...");
+                                } else if let Some(elapsed) = self.audio_preview.elapsed_secs() {
+                                    ui.label(format!(
+                                        "{elapsed:.1}s / {:.1}s",
+                                        self.audio_preview.duration_secs()
+                                    ));
+                                } else if let Some(err) = &self.audio_preview.last_error {
+                                    ui.label(RichText::new(err).color(Color32::RED));
+                                }
+                            });
+                            ui.end_row();
+                        }
                     });
             });
 

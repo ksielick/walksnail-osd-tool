@@ -12,6 +12,10 @@ pub struct VideoInfo {
     pub bitrate: u32,
     pub duration: Duration,
     pub total_frames: u32,
+    pub has_audio: bool,
+    pub audio_sample_rate: Option<u32>,
+    pub audio_channels: Option<u16>,
+    pub audio_start_time_secs: f64,
 }
 
 impl VideoInfo {
@@ -26,7 +30,12 @@ impl TryFrom<FfProbe> for VideoInfo {
     type Error = VideoInfoError;
 
     fn try_from(value: FfProbe) -> Result<Self, Self::Error> {
-        let stream = value.streams.first().ok_or(VideoInfoError::NoStream)?;
+        let stream = value
+            .streams
+            .iter()
+            .find(|s| s.codec_type.as_deref() == Some("video"))
+            .or_else(|| value.streams.first())
+            .ok_or(VideoInfoError::NoStream)?;
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let width = stream.width.ok_or(VideoInfoError::NoFrameWidth)? as u32;
@@ -63,6 +72,20 @@ impl TryFrom<FfProbe> for VideoInfo {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let total_frames = (frame_rate * duration.as_secs_f32()) as u32;
 
+        let audio_stream = value.streams.iter().find(|s| s.codec_type.as_deref() == Some("audio"));
+        let has_audio = audio_stream.is_some();
+        let audio_sample_rate = audio_stream
+            .and_then(|s| s.sample_rate.as_deref())
+            .and_then(|sr| sr.parse::<u32>().ok());
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let audio_channels = audio_stream
+            .and_then(|s| s.channels)
+            .and_then(|c| u16::try_from(c).ok());
+        let audio_start_time_secs = audio_stream
+            .and_then(|s| s.start_time.as_deref())
+            .and_then(|t| t.parse::<f64>().ok())
+            .unwrap_or(0.0);
+
         Ok(Self {
             width,
             height,
@@ -70,6 +93,10 @@ impl TryFrom<FfProbe> for VideoInfo {
             bitrate,
             duration,
             total_frames,
+            has_audio,
+            audio_sample_rate,
+            audio_channels,
+            audio_start_time_secs,
         })
     }
 }

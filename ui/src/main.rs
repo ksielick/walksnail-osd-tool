@@ -13,6 +13,7 @@ use poll_promise::Promise;
 use crate::util::check_updates;
 
 mod app;
+mod audio_preview;
 mod bottom_panel;
 mod central_panel;
 mod osd_preview;
